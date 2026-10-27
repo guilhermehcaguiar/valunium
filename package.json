@@ -1,0 +1,44 @@
+{
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "name": "valunium",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "pnpm": ">=10.34.9 <11"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "turbo run typecheck && tsc -p tsconfig.tools.json",
+    "test": "turbo run test",
+    "prisma:validate": "prisma validate",
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:check": "tsx scripts/check-database.ts",
+    "docs:check": "python3 scripts/verify_docs.py"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5",
+    "typescript-eslint": "8.72.1",
+    "typescript": "6.0.3",
+    "turbo": "2.11.10",
+    "@types/node": "^24.0.0",
+    "globals": "^17.0.0",
+    "prisma": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "@prisma/adapter-pg": "7.10.1",
+    "dotenv": "^17.0.0",
+    "tsx": "^4.20.0",
+    "concurrently": "^9.2.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@nestjs/platform-express>multer": "2.5.0"
+    }
+  }
+}

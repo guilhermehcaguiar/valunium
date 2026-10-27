@@ -1,0 +1,16 @@
+// Stage 01: technical metadata only. Domain draft: docs/architecture/schema.conceptual.prisma.
+// Financial fields in future stages must use Decimal @db.Decimal(38, 12).
+generator client {
+  provider = "prisma-client"
+  output = "./generated/client"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model FoundationMetadata {
+  id        String   @id
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}

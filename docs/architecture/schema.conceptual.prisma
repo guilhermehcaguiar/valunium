@@ -1,0 +1,114 @@
+// RASCUNHO DE MODELAGEM — NÃO EXECUTAR MIGRATION EM PRODUÇÃO SEM REVISÃO
+// Modelo CONCEITUAL: revisar para versão estável do Prisma durante bootstrap; Prisma 7 usa prisma.config.ts para URL.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AssetClass {
+  STOCK
+  FII
+  ETF
+  BDR
+  OTHER
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
+
+enum IncomeType {
+  DIVIDEND
+  JCP
+  OTHER
+}
+
+model User {
+  id         String      @id @default(uuid()) @db.Uuid
+  authSub    String      @unique // Placeholder até escolher autenticação na Etapa 02
+  createdAt  DateTime    @default(now())
+  portfolios Portfolio[]
+}
+
+model Portfolio {
+  id           String        @id @default(uuid()) @db.Uuid
+  ownerId      String        @db.Uuid
+  owner        User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name         String
+  baseCurrency String        @default("BRL")
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+  incomes      IncomeEvent[]
+  imports      ImportBatch[]
+  @@index([ownerId])
+}
+
+model Asset {
+  id           String        @id @default(uuid()) @db.Uuid
+  ticker       String
+  displayName  String
+  assetClass   AssetClass
+  currency     String        @default("BRL")
+  transactions Transaction[]
+  incomes      IncomeEvent[]
+  quotes       Price[]
+  @@index([ticker])
+}
+
+model Transaction {
+  id          String          @id @default(uuid()) @db.Uuid
+  portfolioId String          @db.Uuid
+  portfolio   Portfolio       @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  assetId     String          @db.Uuid
+  asset       Asset           @relation(fields: [assetId], references: [id])
+  type        TransactionType
+  tradeDate   DateTime        @db.Date
+  quantity    Decimal         @db.Decimal(38, 12)
+  unitPrice   Decimal         @db.Decimal(38, 12)
+  fees        Decimal         @default(0) @db.Decimal(38, 12)
+  createdAt   DateTime        @default(now())
+  source      String          @default("MANUAL")
+  externalKey String?
+  @@index([portfolioId, tradeDate])
+  @@unique([portfolioId, externalKey])
+}
+
+model IncomeEvent {
+  id          String      @id @default(uuid()) @db.Uuid
+  portfolioId String      @db.Uuid
+  portfolio   Portfolio   @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  assetId     String      @db.Uuid
+  asset       Asset       @relation(fields: [assetId], references: [id])
+  type        IncomeType
+  paidDate    DateTime    @db.Date
+  amount      Decimal     @db.Decimal(38, 12)
+  currency    String      @default("BRL")
+  createdAt   DateTime    @default(now())
+  @@index([portfolioId, paidDate])
+}
+
+model Price {
+  id         String     @id @default(uuid()) @db.Uuid
+  assetId    String     @db.Uuid
+  asset      Asset      @relation(fields: [assetId], references: [id])
+  provider   String
+  asOf       DateTime
+  price      Decimal    @db.Decimal(38, 12)
+  currency   String
+  createdAt  DateTime   @default(now())
+  @@unique([assetId, provider, asOf])
+}
+
+model ImportBatch {
+  id          String     @id @default(uuid()) @db.Uuid
+  portfolioId String     @db.Uuid
+  portfolio   Portfolio  @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  sha256      String
+  status      String
+  createdAt   DateTime   @default(now())
+  @@unique([portfolioId, sha256])
+}
