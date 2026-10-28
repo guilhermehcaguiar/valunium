@@ -2,7 +2,7 @@
 
 Plataforma open source de acompanhamento e inteligência patrimonial. Gratuita nesta fase, desenvolvida para colaboração, uso independente e portfólio técnico.
 
-**Estado: Etapa 02 — autenticação, usuários e carteiras.** Cadastro, login/logout, sessões persistentes, perfil, recuperação/alteração de senha e carteiras próprias implementados. O dashboard contém apenas navegação e contexto. Não há serviço hospedado, saldos fictícios, registros históricos, cotações ou cálculos de investimento.
+**Estado: Etapa 03 — núcleo financeiro histórico.** Cadastro, login/logout, sessões persistentes, perfil, recuperação/alteração de senha e carteiras próprias implementados. O dashboard contém apenas navegação e contexto. Compras/vendas históricas, posições derivadas, custo médio, resultado realizado e proventos recebidos estão implementados. Não há serviço hospedado, saldos fictícios, cotações ou indicadores de mercado.
 
 ## Política financeira permanente
 
@@ -155,3 +155,12 @@ pnpm test:browser
 ```
 
 Esse comando prepara o build, cria outro cluster PostgreSQL descartável e testa com Chromium: dois contextos isolados, cadastro/login, carteiras, perfil, logout, recuperação, bloqueio de acesso cruzado, cookie persistente, CSRF, largura mobile e navegação por teclado. Usa portas locais 43102/43103 e encerra os processos ao terminar. Screenshots e logs ficam no diretório privado descartável em /tmp. O download do Chromium é opcional para os testes de API; não usa serviços externos em runtime.
+
+
+## Histórico financeiro — Etapa 03
+
+Abra **Ativos** para cadastrar identificação manual B3/BRL. Em cada carteira, abra **Histórico e posições** (`/portfolios/[id]/history`) para registrar operações já realizadas externamente, consultar posições, registrar dividendos/JCP recebidos e corrigir/cancelar com motivo auditado. Campos decimais aceitam vírgula na interface e são enviados como strings sem arredondamento. Catálogo em `/assets`; manutenção somente pelo criador. Não há integração financeira externa.
+
+Motor puro Decimal.js 10.6.0 com 80 algarismos internos; regras, taxas, ordenação, limites e arredondamento em [CALCULATION_RULES](docs/finance/CALCULATION_RULES.md). Contratos e integridade em [STAGE_03_API](docs/architecture/STAGE_03_API.md). Relatório em [ETAPA_03_REPORT](docs/development/ETAPA_03_REPORT.md). `pnpm test` inclui regressões das etapas anteriores e PostgreSQL real; `pnpm test:browser` inclui duas compras, venda parcial, posição e dividendo recebido. Migração aditiva, aplicada automaticamente apenas ao banco descartável dos testes. Para seu banco identificado: gere cliente e execute `pnpm db:migrate` antes do dev.
+
+Preço de mercado e resultado não realizado ficam indisponíveis. Histórico com evento societário não suportado deve ser sinalizado na interface: posições ficam bloqueadas até conciliação externa. Não há split/grupamento/bonificação/amortização, short, FX, impostos automáticos, importação, rentabilidade ou dashboard financeiro completo. Etapa 04 não iniciada.

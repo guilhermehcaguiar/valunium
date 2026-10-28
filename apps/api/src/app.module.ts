@@ -1,3 +1,5 @@
+import { AssetsModule } from './finance/assets';
+import { TransactionsModule, IncomeEventsModule, PositionsModule } from './finance/modules';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
@@ -13,7 +15,7 @@ import type { Environment } from './config/environment';
 export class AppModule {
   static register(environment: Environment): DynamicModule {
     return { module: AppModule,
-      imports: [CoreModule.register(environment), HealthModule, AuthModule, UsersModule, PortfoliosModule,
+      imports: [CoreModule.register(environment), HealthModule, AuthModule, UsersModule, PortfoliosModule, AssetsModule, TransactionsModule, IncomeEventsModule, PositionsModule,
         ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }])],
       providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }, { provide: APP_GUARD, useClass: CsrfGuard }] };
   }

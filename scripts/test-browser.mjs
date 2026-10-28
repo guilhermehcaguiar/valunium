@@ -66,6 +66,32 @@ try {
   await register(pageA, 'Browser A', 'browser.a@example.test'); await login(pageA, 'browser.a@example.test');
   await pageA.getByText('Browser A', { exact: true }).waitFor();
   const idA = await portfolio(pageA, 'Carteira sintética A');
+  await pageA.goto(origin + '/assets');
+  await pageA.getByLabel('Ticker',{exact:true}).fill('BROWSER03');
+  await pageA.getByLabel('Nome do ativo').fill('Synthetic browser asset');
+  await pageA.getByLabel('Fonte da identificação (ou declaração manual)').fill('Synthetic test fixture');
+  await pageA.getByRole('button',{name:'Cadastrar ativo',exact:true}).click();
+  await pageA.getByRole('status').filter({hasText:'Registro salvo'}).waitFor();
+  await pageA.goto(origin + '/portfolios/' + idA + '/history');
+  async function historical(type,quantity,price,date){
+    await pageA.getByLabel('Tipo de registro',{exact:true}).selectOption(type);
+    await pageA.getByLabel('Data efetiva').fill(date);
+    await pageA.getByLabel('Quantidade',{exact:true}).fill(quantity);
+    await pageA.getByLabel('Preço unitário',{exact:true}).fill(price);
+    await pageA.getByRole('button',{name:type==='BUY'?'Registrar compra':'Registrar venda',exact:true}).click();
+    await pageA.getByRole('status').filter({hasText:'Registro salvo'}).waitFor();
+    await pageA.getByRole('status').filter({hasText:'Carregando'}).waitFor({state:'hidden'});
+  }
+  await historical('BUY','10','17','2026-01-01');
+  await historical('BUY','5','19','2026-01-02');
+  await historical('SELL','3','20','2026-01-03');
+  await pageA.getByText('Custo remanescente: 212,000000000000',{exact:true}).waitFor();
+  await pageA.getByText('Resultado realizado: 7,000000000000',{exact:true}).waitFor();
+  await pageA.getByLabel('Tipo de registro',{exact:true}).selectOption('DIVIDEND');
+  await pageA.getByLabel('Data efetiva').fill('2026-01-04');
+  await pageA.getByLabel('Valor bruto recebido').fill('10');
+  await pageA.getByRole('button',{name:'Registrar provento recebido',exact:true}).click();
+  await pageA.getByText('Proventos líquidos: 10,000000000000',{exact:true}).waitFor();
   await register(pageB, 'Browser B', 'browser.b@example.test'); await login(pageB, 'browser.b@example.test');
   await pageB.getByText('Browser B', { exact: true }).waitFor();
   await portfolio(pageB, 'Carteira sintética B');
@@ -74,6 +100,8 @@ try {
   assert.equal(await pageA.getByRole('link', { name: 'Carteira sintética B', exact: true }).count(), 0);
   await pageB.goto(origin + '/portfolios/' + idA);
   await pageB.getByRole('alert').filter({ hasText: 'Carteira não encontrada' }).waitFor();
+  assert.equal((await b.request.get(`${origin}/api/portfolios/${idA}/positions`)).status(),404);
+  assert.equal((await b.request.get(`${origin}/api/portfolios/${idA}/transactions`)).status(),404);
   const csrfResponse = await b.request.get(origin + '/api/auth/csrf');
   const csrf = (await csrfResponse.json()).data.csrfToken;
   for (const action of ['archive', 'restore', 'primary']) {

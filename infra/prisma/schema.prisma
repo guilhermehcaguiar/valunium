@@ -28,6 +28,7 @@ model User {
   createdAt       DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
   portfolios      Portfolio[]
+  catalogAssets   Asset[]
   passwordResets  PasswordReset[]
 }
 
@@ -62,5 +63,78 @@ model Portfolio {
   createdAt    DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
   @@index([ownerId, archivedAt, createdAt])
+  events       LedgerEvent[]
+  revisions    LedgerRevision[]
+  historyIncomplete Boolean @default(false)
   // Partial primary uniqueness, BRL and lifecycle constraints live in the SQL migration.
+}
+
+model Asset {
+  id String @id @default(uuid()) @db.Uuid
+  creatorId String @db.Uuid
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  ticker String @db.VarChar(20)
+  name String @db.VarChar(150)
+  assetClass String @db.VarChar(10)
+  market String @default("B3")
+  currency String @default("BRL")
+  active Boolean @default(true)
+  source String @db.VarChar(300)
+  aliases AssetAlias[]
+  events LedgerEvent[]
+  changes AssetChange[]
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+model AssetAlias {
+  id String @id @default(uuid()) @db.Uuid
+  assetId String @db.Uuid
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  ticker String
+  market String
+  @@unique([market, ticker])
+}
+model AssetChange {
+  id String @id @default(uuid()) @db.Uuid
+  assetId String @db.Uuid
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  snapshot Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+model LedgerEvent {
+  id String @id @default(uuid()) @db.Uuid
+  portfolioId String @db.Uuid
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Restrict)
+  assetId String @db.Uuid
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  kind String @db.VarChar(10)
+  date DateTime @db.Date
+  sequence BigInt @unique @default(autoincrement())
+  quantity Decimal @db.Decimal(38,12)
+  unitPrice Decimal @db.Decimal(38,12)
+  fees Decimal @db.Decimal(38,12)
+  gross Decimal @db.Decimal(38,12)
+  withholding Decimal @db.Decimal(38,12)
+  note String @default("") @db.VarChar(1000)
+  requestKey String @db.Uuid
+  fingerprint String
+  version Int @default(1)
+  cancelled Boolean @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@unique([portfolioId, requestKey])
+  @@index([portfolioId, date, sequence])
+  @@index([portfolioId, assetId])
+}
+model LedgerRevision {
+  id String @id @default(uuid()) @db.Uuid
+  portfolioId String @db.Uuid
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Restrict)
+  actorId String @db.Uuid
+  resourceId String @db.Uuid
+  reason String
+  before Json
+  after Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([portfolioId, resourceId, createdAt])
 }

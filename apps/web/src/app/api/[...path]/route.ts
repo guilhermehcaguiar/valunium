@@ -3,11 +3,11 @@ import { internalApiOrigin } from '../../../lib/server-api';
 import { parseHttpOrigin } from '@valunium/shared';
 
 export const dynamic = 'force-dynamic';
-const allowed = /^(auth\/(csrf|register|login|logout|me|change-password|forgot-password|reset-password)|users\/me|portfolios(?:\/[0-9a-f-]{36}(?:\/(archive|restore|primary))?)?)$/;
+const allowed = /^(auth\/(csrf|register|login|logout|me|change-password|forgot-password|reset-password)|assets(?:\/[0-9a-f-]{36})?|users\/me|portfolios(?:\/[0-9a-f-]{36}(?:\/(archive|restore|primary|positions(?:\/limitation)?|transactions(?:\/[0-9a-f-]{36}(?:\/(cancel|revisions))?)?|income(?:\/[0-9a-f-]{36}(?:\/(cancel|revisions))?)?))?)?)$/;
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }): Promise<Response> {
   const { path } = await context.params;
   const endpoint = path.join('/');
-  if (!allowed.test(endpoint) || request.nextUrl.search) return new Response(null, { status: 404 });
+  if (!allowed.test(endpoint) ) return new Response(null, { status: 404 });
   const webOrigin = parseHttpOrigin(process.env.WEB_ORIGIN ?? 'http://localhost:3000');
   const origin = request.headers.get('origin');
   if (!['GET', 'HEAD'].includes(request.method) && origin !== webOrigin) return new Response(null, { status: 403 });
@@ -26,7 +26,7 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     if (Buffer.byteLength(body) > 16384) return new Response(null, { status: 413 });
   }
   try {
-    const response = await fetch(`${internalApiOrigin()}/api/v1/${endpoint}`, {
+    const response = await fetch(`${internalApiOrigin()}/api/v1/${endpoint}${request.nextUrl.search}`, {
       method: request.method, headers, ...(body === undefined ? {} : { body }),
       redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(15_000),
     });

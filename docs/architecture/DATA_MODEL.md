@@ -20,3 +20,6 @@
 
 ## Status
 `docs/architecture/schema.conceptual.prisma` preserva o rascunho original e não é migrado. `infra/prisma/schema.prisma` contém metadados da fundação e identidade/sessões/carteiras da Etapa 02. A migration aditiva inclui unicidade de e-mail normalizado, índice parcial de carteira principal e constraints de lifecycle/moeda. A integridade de ledger/eventos financeiros permanece para a Etapa 03.
+
+
+Etapa 03: Asset/AssetAlias/AssetChange e LedgerEvent/LedgerRevision implementados em migration aditiva. Eventos BUY/SELL e proventos são separados nos módulos/contratos, compartilhando armazenamento e auditoria. Campos de entrada NUMERIC(38,12), cálculos derivados por replay, sem snapshots monetários arredondados. Ver STAGE_03_API.md e ../finance/CALCULATION_RULES.md.

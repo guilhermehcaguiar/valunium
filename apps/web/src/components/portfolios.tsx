@@ -42,7 +42,7 @@ export function PortfolioForm({ id }: { id?: string }) {
     finally { setBusy(false); }
   }
   if (loading) return <p role="status">Carregando carteira…</p>;
-  return <section className="max-w-2xl"><Link href="/portfolios" className="text-sm text-gold underline">Voltar às carteiras</Link><h1 className="my-6 text-3xl font-medium">{id ? 'Detalhes da carteira' : 'Nova carteira'}</h1><Feedback message={message} error={error} />{(!id || item) && <>
+  return <section className="max-w-2xl"><Link href="/portfolios" className="text-sm text-gold underline">Voltar às carteiras</Link>{id && <Link href={`/portfolios/${id}/history`} className="ml-4 text-gold underline">Histórico e posições</Link>}<h1 className="my-6 text-3xl font-medium">{id ? 'Detalhes da carteira' : 'Nova carteira'}</h1><Feedback message={message} error={error} />{(!id || item) && <>
   <p className="my-4 text-sm text-secondary">Moeda-base: BRL{item ? ` · ${item.archivedAt ? 'Arquivada' : item.isPrimary ? 'Principal' : 'Ativa'}` : ''}</p>
   <form onSubmit={submit} className="space-y-5 rounded-2xl border border-line bg-card p-6" aria-busy={busy}>
     <Field label="Nome da carteira" id="portfolio-name" name="name" required minLength={1} maxLength={100} defaultValue={item?.name ?? ''} />

@@ -34,3 +34,6 @@ export interface PortfolioSummary {
   createdAt: string;
   updatedAt: string;
 }
+
+/** Financial API transport values are decimal strings, never JS money numbers. */
+export interface PositionView {assetId:string;quantity:string;cost:string;averagePrice:string;realized:string;income:string;marketValue:null;unrealized:null;quoteStatus:'UNAVAILABLE'}

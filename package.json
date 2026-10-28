@@ -20,7 +20,7 @@
     "db:status": "prisma migrate status",
     "db:check": "tsx scripts/check-database.ts",
     "docs:check": "python3 scripts/verify_docs.py",
-    "test:integration": "pnpm prisma:generate && pnpm --filter @valunium/shared build && pnpm --filter @valunium/api build && node scripts/test-integration.mjs",
+    "test:integration": "pnpm prisma:generate && pnpm --filter @valunium/shared build && pnpm --filter @valunium/financial-core build && pnpm --filter @valunium/api build && node scripts/test-integration.mjs",
     "test:browser": "pnpm build && node scripts/test-integration.mjs --browser"
   },
   "devDependencies": {
