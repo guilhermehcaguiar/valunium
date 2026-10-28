@@ -66,6 +66,7 @@ export interface MarketGroup {
 }
 export interface MarketData {
  status:string;asOf:string;providerStatus:string;groups:MarketGroup[];
+ providerPolicy:{provider:string;state:string;requestedMode:string;effectiveMode:string;tokenConfigured:boolean;storage:string;sharing:boolean;ttlMinutes:number|null;reviewReference:string|null;attribution:string;sources:readonly string[]};
  manualAssets:{id:string;ticker:string;currency:string}[];
 }
 export interface ManualReference {

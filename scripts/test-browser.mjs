@@ -15,8 +15,9 @@ const { MarketDataProvider } = require('../apps/api/dist/market/brapi.provider')
 assert.match(process.env.INTEGRATION_DATABASE_URL ?? '', /valunium_stage02_disposable/);
 assert.equal(process.env.DATABASE_URL, process.env.INTEGRATION_DATABASE_URL);
 const origin = 'http://localhost:43102';
-const environment = readEnvironment({ ...process.env, NODE_ENV: 'test', WEB_ORIGIN: origin, CORS_ORIGINS: origin, BRAPI_API_TOKEN:'SYNTHETIC_BROWSER_FIXTURE', BRAPI_DATA_USE_AUTHORIZED:'true', BRAPI_TERMS_REFERENCE:'Synthetic isolated browser fixture only' });
+const environment = readEnvironment({ ...process.env, NODE_ENV: 'test', WEB_ORIGIN: origin, CORS_ORIGINS: origin, BRAPI_API_TOKEN:'SYNTHETIC_BROWSER_FIXTURE', BRAPI_DATA_USE_AUTHORIZED:'true',BRAPI_PROVIDER_ENABLED:'true',BRAPI_MODE:'shared-postgres', BRAPI_TERMS_REFERENCE:'synthetic-disposable-fixtures' });
 const app = await createApplication(environment, false);
+Object.defineProperty(app.get(MarketDataProvider),'dataOrigin',{value:'FIXTURE',configurable:true});
 let quoteMode='failure';
 app.get(MarketDataProvider).quote=async()=>quoteMode==='failure'?{status:'TIMEOUT'}:{status:'OK',quote:{price:'22.000000000000',currency:'BRL',effectiveAt:new Date(Date.now()-10*60000),fetchedAt:new Date()}};
 let web, browser;
@@ -196,6 +197,43 @@ try {
   assert.equal((await (await b.request.get(`${origin}/api/market/manual/${browserAsset.id}`)).json()).data.items.length,0);
   assert.equal((await b.request.post(`${origin}/api/market/manual/${activeManual.id}/invalidate`,{headers:{Origin:origin,'X-CSRF-Token':csrfB},data:{reason:'Synthetic cross-user attack'}})).status(),404);
   assert.equal((await b.request.get(`${origin}/api/market/valuation?portfolioId=${idA}`)).status(),404);
+  // Exercise the actual production-origin policy gate: shared storage cannot be granted by fixture env flags.
+  Object.defineProperty(app.get(MarketDataProvider),'dataOrigin',{value:'BRAPI',configurable:true});
+  await pageA.goto(origin+'/dashboard');
+  const blockedMarket=pageA.getByRole('region',{name:'Valorização estimada',exact:true});
+  await blockedMarket.locator('p.data-notice').filter({hasText:'Integração externa desativada:'}).waitFor();
+  await blockedMarket.getByText('Gerenciar referências de preço',{exact:true}).click();
+  assert.equal(await blockedMarket.getByRole('button',{name:'Consultar brapi com controle de chamadas',exact:true}).isDisabled(),true);
+  await pageA.screenshot({path:join(process.env.MAIL_OUTBOX_DIR,'..','market-policy-blocked.png'),fullPage:true});
+  await blockedMarket.getByLabel('Preço de referência',{exact:true}).fill('24');
+  await blockedMarket.getByLabel('Fonte ou motivo da referência manual',{exact:true}).fill('Synthetic manual while provider blocked');
+  await blockedMarket.getByRole('checkbox').check();
+  await blockedMarket.getByRole('button',{name:'Salvar referência manual',exact:true}).click();
+  await blockedMarket.locator('.metric-value').getByText('R$ 288,00',{exact:true}).waitFor();
+  const blockedB=(await (await b.request.get(origin+'/api/market/valuation')).json()).data;
+  assert.equal(blockedB.providerStatus,'TERMS_BLOCKED');assert.equal(blockedB.groups[0].marketValue,null);
+  await pageA.screenshot({path:join(process.env.MAIL_OUTBOX_DIR,'..','market-policy-blocked-manual.png'),fullPage:true});
+  const linkedOwner=(await (await a.request.get(origin+'/api/auth/me')).json()).data.id;
+  const {PERSONAL_REVIEW}=require('../apps/api/dist/market/provider-policy');
+  Object.assign(environment,{brapiMode:'personal-memory',brapiPersonalUserId:linkedOwner,brapiTermsReference:PERSONAL_REVIEW});
+  const currentManual=(await (await a.request.get(`${origin}/api/market/manual/${browserAsset.id}`)).json()).data.items.find(q=>!q.invalidatedAt);
+  const currentCsrf=(await (await a.request.get(origin+'/api/auth/csrf')).json()).data.csrfToken;
+  assert.equal((await a.request.post(`${origin}/api/market/manual/${currentManual.id}/invalidate`,{headers:{Origin:origin,'X-CSRF-Token':currentCsrf},data:{reason:'Synthetic personal memory browser scenario'}})).status(),201);
+  await database.marketRequest.updateMany({where:{ticker:'BROWSER03'},data:{startedAt:new Date(Date.now()-2*3600000)}});
+  const persistedBefore=await database.marketQuote.count();
+  await pageA.goto(origin+'/dashboard');
+  await blockedMarket.getByText('Modo local individual:',{exact:false}).waitFor();
+  await blockedMarket.getByText('Gerenciar referências de preço',{exact:true}).click();
+  await blockedMarket.getByRole('button',{name:'Consultar brapi com controle de chamadas',exact:true}).click();
+  await blockedMarket.locator('.metric-value').getByText('R$ 264,00',{exact:true}).waitFor();
+  assert.equal(await database.marketQuote.count(),persistedBefore,'Personal mode must not append persistent provider prices');
+  const personalB=(await (await b.request.get(origin+'/api/market/valuation')).json()).data;
+  assert.equal(personalB.providerStatus,'PERSONAL_ACCESS_ONLY');assert.equal(personalB.groups[0].marketValue,null);
+  for(const width of [375,1440]){await pageA.setViewportSize({width,height:1000});assert.ok(await pageA.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await pageA.screenshot({path:join(process.env.MAIL_OUTBOX_DIR,'..',`market-personal-${width}.png`),fullPage:true});}
+  Object.assign(environment,{brapiMode:'shared-postgres',brapiTermsReference:'synthetic-disposable-fixtures'});
+  Object.defineProperty(app.get(MarketDataProvider),'dataOrigin',{value:'FIXTURE',configurable:true});
+  console.log('PASS: actual policy blocks flags-only shared quotes; browser manual remains functional; personal mode uses RAM and isolates its owner; no external price leaks.');
+
   await pageA.goto(origin + '/portfolios');
   await pageA.getByRole('link', { name: 'Carteira sintética A', exact: true }).waitFor();
   assert.equal(await pageA.getByRole('link', { name: 'Carteira sintética B', exact: true }).count(), 0);

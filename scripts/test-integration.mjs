@@ -24,7 +24,8 @@ try {
   // Unrelated SMTP configuration from the invoking shell must never receive synthetic test mail.
   delete env.SMTP_URL; delete env.SMTP_FROM;
   // Tests never consume an operator's quote token or infer permission to redistribute real data.
-  delete env.BRAPI_API_TOKEN; delete env.BRAPI_TERMS_REFERENCE;
+  delete env.BRAPI_API_TOKEN; delete env.BRAPI_TERMS_REFERENCE; delete env.BRAPI_PERSONAL_USER_ID;
+  env.BRAPI_PROVIDER_ENABLED='false'; env.BRAPI_MODE='disabled';
   env.BRAPI_DATA_USE_AUTHORIZED='false';
   const migration = spawnSync('pnpm', ['db:migrate'], { env, stdio: 'inherit' });
   if (migration.status !== 0) throw new Error('Disposable migration failed');

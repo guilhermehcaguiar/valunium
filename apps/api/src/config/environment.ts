@@ -16,6 +16,9 @@ export interface Environment {
   brapiTermsReference: string | undefined;
   quoteTtlMinutes: number;
   brapiBudget: number;
+  brapiEnabled:boolean;
+  brapiMode:'disabled'|'personal-memory'|'shared-postgres';
+  brapiPersonalUserId:string|undefined;
 }
 
 export function readEnvironment(env: NodeJS.ProcessEnv = process.env): Environment {
@@ -46,7 +49,12 @@ export function readEnvironment(env: NodeJS.ProcessEnv = process.env): Environme
   if (env.BRAPI_DATA_USE_AUTHORIZED && !['true','false'].includes(env.BRAPI_DATA_USE_AUTHORIZED)) throw new Error('Invalid market authorization');
   const brapiTermsReference = env.BRAPI_TERMS_REFERENCE?.trim() || undefined;
   const brapiAuthorized = env.BRAPI_DATA_USE_AUTHORIZED === 'true';
-  if (brapiAuthorized && (!brapiTermsReference || brapiTermsReference.length > 300)) throw new Error('Document separate provider permission before enabling market data');
+  if (brapiTermsReference && brapiTermsReference.length > 300) throw new Error('Invalid market policy reference');
+  if(env.BRAPI_PROVIDER_ENABLED&&!['true','false'].includes(env.BRAPI_PROVIDER_ENABLED))throw new Error('Invalid provider enabled setting');
+  const brapiMode=env.BRAPI_MODE??'disabled';
+  if(!['disabled','personal-memory','shared-postgres'].includes(brapiMode))throw new Error('Invalid provider mode');
+  const brapiPersonalUserId=env.BRAPI_PERSONAL_USER_ID?.trim()||undefined;
+  if(brapiPersonalUserId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(brapiPersonalUserId))throw new Error('Invalid personal provider owner');
   const brapiToken = env.BRAPI_API_TOKEN?.trim() || undefined;
   if (brapiToken && (!/^[\x21-\x7e]+$/.test(brapiToken) || brapiToken.length > 1024)) throw new Error('Invalid provider credential');
   if (nodeEnv === 'production' && (!databaseUrl || !sessionSecret || !webOrigin.startsWith('https://') || !env.SMTP_URL || !env.SMTP_FROM)) {
@@ -56,6 +64,7 @@ export function readEnvironment(env: NodeJS.ProcessEnv = process.env): Environme
     databaseUrl, sessionSecret, webOrigin, mailOutbox: env.MAIL_OUTBOX_DIR || undefined,
     smtpUrl: env.SMTP_URL || undefined, smtpFrom: env.SMTP_FROM || undefined,
     brapiToken, brapiAuthorized, brapiTermsReference,
+    brapiEnabled:env.BRAPI_PROVIDER_ENABLED==='true',brapiMode:brapiMode as Environment['brapiMode'],brapiPersonalUserId,
     quoteTtlMinutes: integer('QUOTE_TTL_MINUTES','60',30,1440), brapiBudget: integer('BRAPI_REQUEST_BUDGET','10000',1,14000) };
 
 }

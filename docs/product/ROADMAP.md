@@ -20,3 +20,5 @@ Conforme o escopo: verificações técnicas, precisão, isolamento, segurança, 
 Etapa 04 implementa dashboards baseados exclusivamente nos registros: custo, realizado, proventos, distribuições e séries contábeis. Cotações, rentabilidade, previsões e benchmarks não fazem parte dela. Etapa 05 foi autorizada e implementada conforme relatório próprio, com integração externa condicionada a token/autorização de dados. Ver docs/development/ETAPA_04_REPORT.md.
 
 Etapa 05: referências manuais privadas e valorização pontual; brapi v2 com cache/orçamento/lease, desativada por padrão até autorização de uso dos dados. Etapa 06 não iniciada. Sem execução financeira ou serviços pagos.
+
+Etapa 05.1: autenticação/cobertura brapi validadas com 14 candidatos; modo local individual em memória e vínculo explícito revisados/testados; cache PostgreSQL compartilhado permanece WAITING_FOR_PROVIDER. Minuta pronta, sem envio. Nenhuma Etapa 06 iniciada.

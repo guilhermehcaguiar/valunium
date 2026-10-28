@@ -16,9 +16,9 @@ const a=client(),b=client();
 const manual=(price='25')=>({assetId,price,effectiveAt:new Date(Date.now()-60000).toISOString(),reason:'Synthetic manually confirmed price',confirmed:true,requestKey:randomUUID()});
 before(async()=>{
  assert.match(process.env.INTEGRATION_DATABASE_URL??'',/valunium_stage02_disposable/);assert.equal(process.env.DATABASE_URL,process.env.INTEGRATION_DATABASE_URL);
- const environment=readEnvironment({...process.env,BRAPI_API_TOKEN:'SYNTHETIC_FIXTURE_ONLY',BRAPI_DATA_USE_AUTHORIZED:'true',BRAPI_TERMS_REFERENCE:'Synthetic fixtures only; no external data',BRAPI_REQUEST_BUDGET:'10'});
+ const environment=readEnvironment({...process.env,BRAPI_API_TOKEN:'SYNTHETIC_FIXTURE_ONLY',BRAPI_DATA_USE_AUTHORIZED:'true',BRAPI_PROVIDER_ENABLED:'true',BRAPI_MODE:'shared-postgres',BRAPI_TERMS_REFERENCE:'synthetic-disposable-fixtures',BRAPI_REQUEST_BUDGET:'10'});
  app=await createApplication(environment,false);second=await createApplication(environment,false);
- for(const instance of [app,second])instance.get(MarketDataProvider).quote=(...args)=>provider(...args);
+ for(const instance of [app,second]){const adapter=instance.get(MarketDataProvider);Object.defineProperty(adapter,'dataOrigin',{value:'FIXTURE'});adapter.quote=(...args)=>provider(...args);}
  await app.listen(0,'127.0.0.1');base=await app.getUrl();await second.init();db=app.get(Database).client;
  await a.register('market.a@example.test');await b.register('market.b@example.test');
  assetId=(await a.request('assets','POST',{ticker:'SYN05',name:'Synthetic quote asset',assetClass:'STOCK',source:'Synthetic fixture'})).data.id;
@@ -94,21 +94,57 @@ test('429 cooldown and rolling budget survive service instances; existing prices
  assert.equal((await a.request('market/refresh','POST',{assetId:otherAsset})).data.status,'RATE_LIMIT');const count=calls;
  assert.equal((await a.request('market/refresh','POST',{assetId:otherAsset})).data.status,'COOLDOWN');assert.equal(calls,count);
  const accounting=(await a.request('dashboard')).data;assert.equal(accounting.groups[0].cost,'214.000000000000');
- const repo=app.get(QuoteRepository);const reservation=await repo.reserve(otherAsset,'NEW05',3600000,1);assert.equal(reservation.status,'COOLDOWN');
+ const repo=app.get(QuoteRepository);const reservation=await repo.reserve(otherAsset,'NEW05',3600000,1,true);assert.equal(reservation.status,'COOLDOWN');
  await db.marketProviderState.update({where:{id:'BRAPI'},data:{blockedUntil:null}});
- assert.equal((await repo.reserve(otherAsset,'NEW05',3600000,1)).status,'LOCAL_BUDGET');assert.equal(calls,count);
+ assert.equal((await repo.reserve(otherAsset,'NEW05',3600000,1,true)).status,'LOCAL_BUDGET');assert.equal(calls,count);
  const expiredAsset=await db.asset.create({data:{creatorId:(await a.request('auth/me')).data.id,ticker:'EXP05',name:'Synthetic expired cache',assetClass:'STOCK',source:'Synthetic fixture'}});
  await db.marketQuote.create({data:{assetId:expiredAsset.id,ticker:'EXP05',price:'10',currency:'BRL',effectiveAt:new Date(Date.now()-2*3600000),fetchedAt:new Date(Date.now()-2*3600000)}});
- const expiredReservation=await repo.reserve(expiredAsset.id,'EXP05',3600000,100);assert.equal(expiredReservation.status,'RESERVED');
- await repo.settle(expiredAsset.id,'EXP05',expiredReservation.leaseId,expiredReservation.requestId,fixture());
- assert.equal((await repo.reserve(expiredAsset.id,'EXP05',3600000,100)).status,'CACHED');assert.equal(await db.marketQuote.count({where:{assetId:expiredAsset.id}}),2);
+ const expiredReservation=await repo.reserve(expiredAsset.id,'EXP05',3600000,100,true);assert.equal(expiredReservation.status,'RESERVED');
+ await repo.settle(expiredAsset.id,'EXP05',expiredReservation.leaseId,expiredReservation.requestId,fixture(),true);
+ assert.equal((await repo.reserve(expiredAsset.id,'EXP05',3600000,100,true)).status,'CACHED');assert.equal(await db.marketQuote.count({where:{assetId:expiredAsset.id}}),2);
 });
 test('missing token and absent provider permission block network independently without blocking manual valuation',async()=>{
  const owner=(await a.request('auth/me')).data.id;
  for(const config of [{BRAPI_DATA_USE_AUTHORIZED:'false',BRAPI_API_TOKEN:'SYNTHETIC'},{BRAPI_DATA_USE_AUTHORIZED:'false',BRAPI_API_TOKEN:''}]){
-  const instance=await createApplication(readEnvironment({...process.env,...config}),false);
+  const instance=await createApplication(readEnvironment({...process.env,BRAPI_PROVIDER_ENABLED:'true',BRAPI_MODE:'shared-postgres',...config}),false);
   try{await instance.init();const service=instance.get(QuoteService);assert.equal((await service.refresh(owner,assetId)).status,config.BRAPI_API_TOKEN?'TERMS_BLOCKED':'NO_TOKEN');assert.equal((await service.references(owner,[{id:assetId,ticker:'SYN05',currency:'BRL'}]))[0].price,null);
    const created=await service.manual(owner,manual('30'));const reference=(await service.references(owner,[{id:assetId,ticker:'SYN05',currency:'BRL'}]))[0];assert.equal(reference.status,'MANUAL');assert.equal(reference.price,'30.000000000000');await service.invalidate(owner,created.id,'Synthetic fallback test completed');
   }finally{await instance.close();}
  }
+});
+test('personal local mode stores no external price in PostgreSQL, isolates its owner and bounds restart refetch',async()=>{
+ const {PERSONAL_REVIEW}=require('../../dist/market/provider-policy');
+ const owner=(await a.request('auth/me')).data.id;
+ const id=(await a.request('assets','POST',{ticker:'PERSONAL51',name:'Synthetic personal memory',assetClass:'STOCK',source:'Synthetic fixture'})).data.id;
+ const trade={assetId:id,kind:'BUY',date:'2026-01-01',quantity:'1',unitPrice:'10',fees:'0',gross:'0',withholding:'0',note:'Synthetic fixture',requestKey:randomUUID()};
+ assert.equal((await a.request(`portfolios/${portfolioId}/transactions`,'POST',trade)).status,201);
+ const theirs=(await b.request('portfolios')).data.find(p=>p.name==='Synthetic second owner').id;
+ assert.equal((await b.request(`portfolios/${theirs}/transactions`,'POST',{...trade,requestKey:randomUUID()})).status,201);
+ const environment=readEnvironment({...process.env,BRAPI_API_TOKEN:'SYNTHETIC_PERSONAL',BRAPI_PROVIDER_ENABLED:'true',BRAPI_MODE:'personal-memory',BRAPI_PERSONAL_USER_ID:owner,BRAPI_DATA_USE_AUTHORIZED:'true',BRAPI_TERMS_REFERENCE:PERSONAL_REVIEW});
+ const one=await createApplication(environment,false),two=await createApplication(environment,false);let queries=0;
+ try{
+  for(const instance of [one,two]){instance.get(MarketDataProvider).quote=async()=>{queries++;return {...fixture(),quote:{...fixture().quote,price:'31.000000000000'}};};await instance.init();}
+  // Origin stays BRAPI: this exercises the actual reviewed personal policy, with only transport synthetic.
+  const first=one.get(QuoteService),second=two.get(QuoteService);
+  assert.equal((await first.refresh(owner,id)).status,'OK');assert.equal((await first.refresh(owner,id)).status,'CACHED');assert.equal(queries,1);
+  assert.equal(await db.marketQuote.count({where:{assetId:id}}),0);
+  const refs=await first.references(owner,[{id,ticker:'PERSONAL51',currency:'BRL'}]);assert.equal(refs[0].price,'31.000000000000');
+  const otherOwner=(await b.request('auth/me')).data.id;assert.equal((await first.refresh(otherOwner,id)).status,'PERSONAL_ACCESS_ONLY');
+  assert.equal((await first.references(otherOwner,[{id,ticker:'PERSONAL51',currency:'BRL'}]))[0].price,null);
+  assert.equal((await second.refresh(owner,id)).status,'NO_LOCAL_CACHE');assert.equal(queries,1);
+  const manualInput={...manual('32'),assetId:id};await first.manual(owner,manualInput);
+  assert.equal((await first.references(owner,[{id,ticker:'PERSONAL51',currency:'BRL'}]))[0].source,'MANUAL');
+ }finally{await one.close();await two.close();}
+});
+test('a late result from a replaced lease cannot overwrite a newer reference or populate memory',async()=>{
+ const owner=(await a.request('auth/me')).data.id;
+ const asset=await db.asset.create({data:{creatorId:owner,ticker:'LEASE51',name:'Synthetic late lease',assetClass:'STOCK',source:'Synthetic concurrency fixture'}});
+ const repo=app.get(QuoteRepository);
+ const first=await repo.reserve(asset.id,'LEASE51',1000,1000,true);assert.equal(first.status,'RESERVED');
+ await db.marketProviderState.update({where:{id:'BRAPI'},data:{leaseUntil:new Date(Date.now()-1000)}});
+ const second=await repo.reserve(asset.id,'LEASE51',1000,1000,true);assert.equal(second.status,'RESERVED');assert.notEqual(first.leaseId,second.leaseId);
+ assert.equal(await repo.settle(asset.id,'LEASE51',first.leaseId,first.requestId,{...fixture(),quote:{...fixture().quote,price:'999.000000000000'}},true),false);
+ assert.equal(await db.marketQuote.count({where:{assetId:asset.id}}),0);
+ assert.equal(await repo.settle(asset.id,'LEASE51',second.leaseId,second.requestId,fixture(),true),true);
+ assert.equal((await db.marketQuote.findFirst({where:{assetId:asset.id}})).price.toFixed(12),'20.000000000000');
 });

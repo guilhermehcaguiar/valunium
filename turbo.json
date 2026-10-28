@@ -51,7 +51,10 @@
         "BRAPI_DATA_USE_AUTHORIZED",
         "BRAPI_TERMS_REFERENCE",
         "QUOTE_TTL_MINUTES",
-        "BRAPI_REQUEST_BUDGET"
+        "BRAPI_REQUEST_BUDGET",
+        "BRAPI_PROVIDER_ENABLED",
+        "BRAPI_MODE",
+        "BRAPI_PERSONAL_USER_ID"
       ]
     }
   },

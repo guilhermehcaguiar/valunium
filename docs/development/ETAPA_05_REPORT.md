@@ -110,3 +110,6 @@ Commit sugerido: `feat(market): adicionar cotações controladas e valorização
 Evidências finais de comandos: /tmp/valunium-stage05/test-complete.log (core 19 + shared 2 + web 5 + API 11 + PostgreSQL 23), build-complete.log, typecheck-complete.log, lint-complete.log, browser-complete.log, audit.json (todas severidades zero). Diretório de integração final /tmp/valunium-stage02-o9bFbo; browser final /tmp/valunium-stage02-xBkJGv. Ambos encerrados. A conferência local não gerou dados financeiros ou capturas da conta do usuário.
 
 O gráfico de distribuição de mercado só aparece com cobertura completa; testes verificaram agregação do mesmo ativo em duas carteiras e ausência de distribuição parcial, além do SVG e tabela no Chromium. A correção tipográfica de Indisponível foi confirmada por captura e teste de uma linha no desktop.
+
+
+Atualização posterior — Etapa 05.1: este relatório preserva o estado histórico da entrega. A investigação complementar encontrou token configurado e esclarecimentos oficiais de uso pessoal/cache, validou 14 candidatos e introduziu política restritiva de modo local individual em memória. O bloqueio de cache PostgreSQL compartilhado permanece. Ver ETAPA_05_1_REPORT.md para estado atual; não habilitar compartilhamento com as instruções antigas de flag/referência livre.

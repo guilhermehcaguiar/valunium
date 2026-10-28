@@ -9,6 +9,8 @@ import { DashboardModule, DashboardService } from '../finance/dashboard';
 import { QuoteService } from './quote.service';
 import { QuoteRepository } from './quote.repository';
 import { BrapiProvider, MarketDataProvider } from './brapi.provider';
+import { MarketProviderPolicy } from './provider-policy';
+import { PersonalQuoteCache } from './personal-quote-cache';
 
 class ManualDto {
   @IsUUID() assetId!: string;
@@ -32,13 +34,13 @@ export class MarketValuationService {
     if(Object.keys(query).some(k=>!['portfolioId','to'].includes(k)))throw new BadRequestException();
     const today=new Date().toISOString().slice(0,10);
     const accounting=await this.dashboard.read(ownerId,query);
-    if(accounting.to!==today)return {status:'HISTORICAL_VIEW',asOf:today,providerStatus:this.quotes.availability(),groups:[],manualAssets:[]};
+    if(accounting.to!==today)return {status:'HISTORICAL_VIEW',asOf:today,providerStatus:this.quotes.availability(ownerId),providerPolicy:this.quotes.policy(ownerId),groups:[],manualAssets:[]};
     const positions=accounting.groups.flatMap(g=>g.positions.map(p=>({...p,currency:g.currency})));
     const assets=[...new Map(positions.map(p=>[p.assetId,{id:p.assetId,ticker:p.ticker,currency:p.currency}])).values()];
     const quotes=await this.quotes.references(ownerId,assets);
     const valued=valuePositions(positions,quotes);
     const groups=accounting.groups.map(g=>!g.complete?{currency:g.currency,complete:false,totalPositions:null,coveredPositions:null,marketValue:null,unrealized:null,unrealizedPercent:null,partialMarketValue:null,partialUnrealized:null,byAsset:[],rows:[]}:valued.find(v=>v.currency===g.currency)??{currency:g.currency,complete:true,totalPositions:0,coveredPositions:0,marketValue:'0.000000000000',unrealized:'0.000000000000',unrealizedPercent:null,partialMarketValue:'0.000000000000',partialUnrealized:'0.000000000000',byAsset:[],rows:[]});
-    return {status:accounting.status,asOf:today,providerStatus:this.quotes.availability(),groups,manualAssets:assets};
+    return {status:accounting.status,asOf:today,providerStatus:this.quotes.availability(ownerId),providerPolicy:this.quotes.policy(ownerId),groups,manualAssets:assets};
   }
 }
 @Controller({path:'market',version:'1'}) @UseGuards(SessionAuthGuard)
@@ -53,5 +55,5 @@ class MarketController {
     return {data:await this.quotes.history(req.user.id,assetId,Number(q.page??'1'))};
   }
 }
-@Module({imports:[AuthModule,DashboardModule],controllers:[MarketController],providers:[QuoteService,QuoteRepository,MarketValuationService,{provide:MarketDataProvider,useClass:BrapiProvider}]})
+@Module({imports:[AuthModule,DashboardModule],controllers:[MarketController],providers:[QuoteService,QuoteRepository,MarketValuationService,MarketProviderPolicy,PersonalQuoteCache,{provide:MarketDataProvider,useClass:BrapiProvider}]})
 export class MarketDataModule {}

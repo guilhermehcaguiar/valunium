@@ -4,9 +4,12 @@ import { ENVIRONMENT } from '../core/environment.token';
 import type { Environment } from '../config/environment';
 
 export interface ProviderQuote { price: string; currency: string; effectiveAt: Date | null; fetchedAt: Date }
-export type ProviderStatus = 'OK' | 'NO_TOKEN' | 'INVALID_TOKEN' | 'NO_COVERAGE' | 'MALFORMED' | 'TIMEOUT' | 'RATE_LIMIT' | 'PROVIDER_ERROR' | 'TICKER_CHANGED';
+export type ProviderStatus = 'OK' | 'NO_TOKEN' | 'INVALID_TOKEN' | 'ACCESS_DENIED' | 'NO_COVERAGE' | 'MALFORMED' | 'TIMEOUT' | 'RATE_LIMIT' | 'PROVIDER_ERROR' | 'TICKER_CHANGED';
 export type ProviderResult = { status: 'OK'; quote: ProviderQuote } | { status: Exclude<ProviderStatus,'OK'>; retryAfterSeconds?: number };
-export abstract class MarketDataProvider { abstract quote(ticker: string): Promise<ProviderResult> }
+export abstract class MarketDataProvider {
+  get dataOrigin():'BRAPI'|'FIXTURE'{return 'BRAPI';}
+  abstract quote(ticker: string): Promise<ProviderResult>;
+}
 const record = (v: unknown): v is Record<string,unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** JSON numbers represent provider precision only; reject unsafe magnitude/digits before Decimal. */
@@ -34,6 +37,17 @@ export function parseBrapi(value: unknown, ticker: string, fetchedAt: Date): Pro
   }
   return {status:'OK',quote:{price,currency:'BRL',effectiveAt,fetchedAt}};
 }
+export function parseBrapiText(text:string,ticker:string,fetchedAt:Date):ProviderResult {
+  const body:unknown=JSON.parse(text,(key:string,value:unknown,context?:{source?:string})=>{
+        if(key==='regularMarketPrice'&&typeof value==='number'){
+          // Node 24 exposes the original numeric JSON lexeme: reject precision already lost by JSON.parse.
+          const raw=context?.source;
+          if(!raw||!/^\d+(\.\d{1,8})?$/.test(raw)||raw.replace('.','').replace(/^0+/,'').length>15||normalizeDecimal(raw)!==providerPrice(value))throw new Error('UNSUPPORTED_PROVIDER_PRECISION');
+        }
+        return value;
+      });
+  return parseBrapi(body,ticker,fetchedAt);
+}
 @Injectable()
 export class BrapiProvider extends MarketDataProvider {
   constructor(@Inject(ENVIRONMENT) private readonly environment: Environment) { super(); }
@@ -51,24 +65,18 @@ export class BrapiProvider extends MarketDataProvider {
         return {status:'RATE_LIMIT',retryAfterSeconds:Number.isFinite(seconds)?Math.max(60,Math.min(seconds,604800)):3600};
       }
       if (response.status === 401) return {status:'INVALID_TOKEN'};
-      if ([403,404].includes(response.status)) return {status:'NO_COVERAGE'};
+      if (response.status === 403) return {status:'ACCESS_DENIED'};
+      if (response.status === 404) return {status:'NO_COVERAGE'};
       if (!response.ok) return {status:'PROVIDER_ERROR'};
       // Bound the stream, including responses with no Content-Length.
       if (!response.body || Number(response.headers.get('content-length') ?? 0)>65536) return {status:'MALFORMED'};
       const reader=response.body.getReader();let text='';let bytes=0;const decoder=new TextDecoder();
       try { for (;;) { const chunk=await reader.read();if(chunk.done)break;bytes+=chunk.value.byteLength;if(bytes>65536){await reader.cancel();return {status:'MALFORMED'};}text+=decoder.decode(chunk.value,{stream:true}); } text+=decoder.decode(); }
       finally {reader.releaseLock();}
-      const body:unknown=JSON.parse(text,(key:string,value:unknown,context?:{source?:string})=>{
-        if(key==='regularMarketPrice'&&typeof value==='number'){
-          // Node 24 exposes the original numeric JSON lexeme: reject precision already lost by JSON.parse.
-          const raw=context?.source;
-          if(!raw||!/^\d+(\.\d{1,8})?$/.test(raw)||raw.replace('.','').replace(/^0+/,'').length>15||normalizeDecimal(raw)!==providerPrice(value))throw new Error('UNSUPPORTED_PROVIDER_PRECISION');
-        }
-        return value;
-      });
-      return parseBrapi(body,ticker,new Date());
+      return parseBrapiText(text,ticker,new Date());
     } catch (error) {
       if (error instanceof Error && ['TimeoutError','AbortError'].includes(error.name)) return {status:'TIMEOUT'};
+      if(error instanceof TypeError)return {status:'PROVIDER_ERROR'};
       return {status:'MALFORMED'};
     }
   }

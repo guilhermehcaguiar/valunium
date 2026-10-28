@@ -7,14 +7,17 @@ import type { Environment } from '../config/environment';
 import { MarketDataProvider } from './brapi.provider';
 import { QuoteRepository } from './quote.repository';
 import type { MarketQuote, MarketRequest } from '../generated/prisma/client';
+import { MarketProviderPolicy } from './provider-policy';
+import { PersonalQuoteCache } from './personal-quote-cache';
 export interface ManualInput {assetId:string;price:string;effectiveAt:string;reason:string;requestKey:string;confirmed:true}
 
 @Injectable()
 export class QuoteService {
   private readonly logger=new Logger('MarketData');
   constructor(private readonly db:Database,private readonly repository:QuoteRepository,private readonly provider:MarketDataProvider,
-    @Inject(ENVIRONMENT)private readonly env:Environment){}
-  availability(){return !this.env.brapiToken?'NO_TOKEN':!this.env.brapiAuthorized?'TERMS_BLOCKED':'READY';}
+    @Inject(ENVIRONMENT)private readonly env:Environment,private readonly policies:MarketProviderPolicy,private readonly memory:PersonalQuoteCache){}
+  policy(ownerId?:string){return this.policies.resolve(ownerId,this.provider.dataOrigin);}
+  availability(ownerId?:string){return this.policy(ownerId).state;}
   async assertAsset(ownerId:string,assetId:string){
     const asset=await this.db.client.asset.findUnique({where:{id:assetId}});
     const owned=asset&&await this.db.client.ledgerEvent.findFirst({where:{assetId,cancelled:false,portfolio:{ownerId}},select:{id:true}});
@@ -53,12 +56,15 @@ export class QuoteService {
   }
   async refresh(ownerId:string,assetId:string){
     const asset=await this.assertAsset(ownerId,assetId);
-    const availability=this.availability();if(availability!=='READY')return {status:availability};
+    const policy=this.policy(ownerId);if(policy.state!=='READY')return {status:policy.state};
     if(!asset.active||asset.market!=='B3'||asset.currency!=='BRL')return {status:'NO_COVERAGE'};
-    const reservation=await this.repository.reserve(assetId,asset.ticker,this.env.quoteTtlMinutes*60000,this.env.brapiBudget);
+    const persistent=policy.effectiveMode==='FIXTURE_POSTGRES';
+    if(!persistent&&this.memory.get(ownerId,assetId,asset.ticker))return {status:'CACHED'};
+    const reservation=await this.repository.reserve(assetId,asset.ticker,this.env.quoteTtlMinutes*60000,this.env.brapiBudget,persistent);
     if(reservation.status!=='RESERVED'||typeof reservation.leaseId!=='string'||typeof reservation.requestId!=='string')return {status:reservation.status};
-    const result=await this.provider.quote(asset.ticker);
-    await this.repository.settle(assetId,asset.ticker,reservation.leaseId,reservation.requestId,result);
+    const result=await this.provider.quote(asset.ticker).catch(()=>({status:'PROVIDER_ERROR' as const}));
+    const accepted=await this.repository.settle(assetId,asset.ticker,reservation.leaseId,reservation.requestId,result,persistent);
+    if(accepted&&result.status==='OK'&&!persistent)this.memory.put(ownerId,assetId,asset.ticker,result.quote,this.env.quoteTtlMinutes*60000);
     if(result.status!=='OK')this.logger.warn(JSON.stringify({event:'market_provider_unavailable',status:result.status}));
     return {status:result.status};
   }
@@ -66,20 +72,22 @@ export class QuoteService {
     if(!assets.length)return [];
     const ids=assets.map(a=>a.id);
     const manual=await this.db.client.manualQuote.findMany({where:{ownerId,assetId:{in:ids},invalidatedAt:null}});
+    const policy=this.policy(ownerId),persistent=policy.effectiveMode==='FIXTURE_POSTGRES';
     // Revoked/absent authorization hides previously stored provider data too.
-    const external=this.env.brapiAuthorized?await this.db.client.$queryRaw<MarketQuote[]>`SELECT DISTINCT ON (q."assetId") q.* FROM "MarketQuote" q JOIN "Asset" a ON a.id=q."assetId" AND a.ticker=q.ticker WHERE q."assetId"=ANY(${ids}::uuid[]) ORDER BY q."assetId",q."fetchedAt" DESC,q.id DESC`:[];
-    const attempts=this.env.brapiAuthorized?await this.db.client.$queryRaw<MarketRequest[]>`SELECT DISTINCT ON (ticker) * FROM "MarketRequest" WHERE ticker=ANY(${assets.map(a=>a.ticker)}::text[]) ORDER BY ticker,"startedAt" DESC,id DESC`:[];
+    const external=persistent?await this.db.client.$queryRaw<MarketQuote[]>`SELECT DISTINCT ON (q."assetId") q.* FROM "MarketQuote" q JOIN "Asset" a ON a.id=q."assetId" AND a.ticker=q.ticker WHERE q."assetId"=ANY(${ids}::uuid[]) ORDER BY q."assetId",q."fetchedAt" DESC,q.id DESC`:[];
+    const attempts=policy.state==='READY'?await this.db.client.$queryRaw<MarketRequest[]>`SELECT DISTINCT ON (ticker) * FROM "MarketRequest" WHERE ticker=ANY(${assets.map(a=>a.ticker)}::text[]) ORDER BY ticker,"startedAt" DESC,id DESC`:[];
     const manuals=new Map(manual.map(m=>[m.assetId,m])),externals=new Map(external.map(q=>[q.assetId,q])),statuses=new Map(attempts.map(a=>[a.ticker,a.status]));
     const now=Date.now(),ttl=this.env.quoteTtlMinutes*60000;
     return assets.map(asset=>{
-      const m=manuals.get(asset.id),q=externals.get(asset.id);
+      const m=manuals.get(asset.id),cached=policy.effectiveMode==='PERSONAL_MEMORY'?this.memory.get(ownerId,asset.id,asset.ticker):null;
+      const q=externals.get(asset.id)??cached;
       const effective=m?.effectiveAt??q?.effectiveAt??null;
       const fetched=m?.createdAt??q?.fetchedAt??null;
       const exists=Boolean(m||q),stale=effective!==null&&(now-effective.getTime()>ttl||!m&&fetched!==null&&now-fetched.getTime()>ttl);
-      return {assetId:asset.id,price:m?.price.toFixed(12)??q?.price.toFixed(12)??null,currency:m?.currency??q?.currency??asset.currency,
+      return {assetId:asset.id,price:m?.price.toFixed(12)??externals.get(asset.id)?.price.toFixed(12)??cached?.price??null,currency:m?.currency??q?.currency??asset.currency,
         source:m?'MANUAL':q?'BRAPI':null,priceType:m?'MANUAL':q?'DELAYED':null,effectiveAt:effective?.toISOString()??null,fetchedAt:fetched?.toISOString()??null,
         status:!exists?'UNAVAILABLE':!effective?'UNKNOWN_TIME':stale?'STALE':m?'MANUAL':'VALID',
-        providerStatus:statuses.get(asset.ticker)??this.availability()};
+        providerStatus:statuses.get(asset.ticker)??this.availability(ownerId)};
     });
   }
 }
