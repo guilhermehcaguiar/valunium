@@ -2,7 +2,7 @@
 
 Plataforma open source de acompanhamento e inteligência patrimonial. Gratuita nesta fase, desenvolvida para colaboração, uso independente e portfólio técnico.
 
-**Estado: Etapa 03 — núcleo financeiro histórico.** Cadastro, login/logout, sessões persistentes, perfil, recuperação/alteração de senha e carteiras próprias implementados. O dashboard contém apenas navegação e contexto. Compras/vendas históricas, posições derivadas, custo médio, resultado realizado e proventos recebidos estão implementados. Não há serviço hospedado, saldos fictícios, cotações ou indicadores de mercado.
+**Estado: Etapa 04 — dashboards de acompanhamento contábil.** Cadastro, login/logout, sessões persistentes, perfil, recuperação/alteração de senha e carteiras próprias implementados. O dashboard contém apenas navegação e contexto. Compras/vendas históricas, posições derivadas, custo médio, resultado realizado e proventos recebidos estão implementados. Não há serviço hospedado, saldos fictícios, cotações ou indicadores de mercado.
 
 ## Política financeira permanente
 
@@ -164,3 +164,12 @@ Abra **Ativos** para cadastrar identificação manual B3/BRL. Em cada carteira, 
 Motor puro Decimal.js 10.6.0 com 80 algarismos internos; regras, taxas, ordenação, limites e arredondamento em [CALCULATION_RULES](docs/finance/CALCULATION_RULES.md). Contratos e integridade em [STAGE_03_API](docs/architecture/STAGE_03_API.md). Relatório em [ETAPA_03_REPORT](docs/development/ETAPA_03_REPORT.md). `pnpm test` inclui regressões das etapas anteriores e PostgreSQL real; `pnpm test:browser` inclui duas compras, venda parcial, posição e dividendo recebido. Migração aditiva, aplicada automaticamente apenas ao banco descartável dos testes. Para seu banco identificado: gere cliente e execute `pnpm db:migrate` antes do dev.
 
 Preço de mercado e resultado não realizado ficam indisponíveis. Histórico com evento societário não suportado deve ser sinalizado na interface: posições ficam bloqueadas até conciliação externa. Não há split/grupamento/bonificação/amortização, short, FX, impostos automáticos, importação, rentabilidade ou dashboard financeiro completo. Etapa 04 não iniciada.
+
+
+## Dashboards — Etapa 04
+
+`/dashboard` consolida somente suas carteiras, com seletor e período. `/portfolios/[id]` reúne visão contábil, posições, gráficos, histórico/proventos e as configurações existentes. Indicadores: custo das posições abertas, resultado realizado, proventos recebidos, ativos abertos, carteiras e registros. Cinco visualizações com ECharts 6.1.0/SVG sob demanda e alternativas tabulares exatas, estados vazios/incompletos e recuperação de falhas. Nenhum preço de mercado, rentabilidade, previsão de dividendo ou benchmark foi adicionado.
+
+O backend reutiliza o replay da Etapa 03 e lê um snapshot consistente; não há migrations novas. Moedas são segmentadas, históricos incompletos tornam totais da moeda indisponíveis. Veja [definições dos indicadores](docs/finance/DASHBOARD_INDICATORS.md), [contrato de leitura](docs/architecture/STAGE_04_API.md) e [relatório verificável](docs/development/ETAPA_04_REPORT.md). `pnpm test` cobre indicadores e isolamento real em PostgreSQL; `pnpm test:browser` valida dashboards e captura screenshots privados em /tmp nas larguras 320/375/768/1024/1440, além das regressões 01–03.
+
+O patch de tipos ECharts em patches/ é aplicado pelo pnpm e deve acompanhar o lockfile. Mantém as verificações strict/ESLint; não altera código executável da biblioteca. Não há serviço pago, provedor de cotações, integração financeira, deploy ou SaaS comercial. A Etapa 05 não foi iniciada.

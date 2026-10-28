@@ -42,6 +42,9 @@
   "pnpm": {
     "overrides": {
       "@nestjs/platform-express>multer": "2.5.0"
+    },
+    "patchedDependencies": {
+      "echarts@6.1.0": "patches/echarts@6.1.0.patch"
     }
   }
 }

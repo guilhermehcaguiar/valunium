@@ -1,0 +1,88 @@
+diff --git a/types/dist/echarts.d.ts b/types/dist/echarts.d.ts
+index 59cada8c863e75ce08832cff9b7de221b68a259e..7d290ddc4418a5dbc86ab0fb01314967f56031a5 100644
+--- a/types/dist/echarts.d.ts
++++ b/types/dist/echarts.d.ts
+@@ -856,7 +856,7 @@ declare type PathKey = keyof PathProps;
+ declare type PathPropertyType = PropType<PathProps, PathKey>;
+ declare type PathStatePropNames = DisplayableStatePropNames | 'shape';
+ declare type PathState = Pick<PathProps, PathStatePropNames> & {
+-    hoverLayer?: ElementCommonState['hoverLayer'];
++    hoverLayer?: NonNullable<ElementCommonState['hoverLayer']>;
+ };
+ interface Path<Props extends PathProps = PathProps> {
+     animate(key?: '', loop?: boolean): Animator<this>;
+@@ -11533,7 +11533,7 @@ interface GraphSeriesOption extends SeriesOption<GraphNodeStateOption<CallbackDa
+     itemStyle?: ItemStyleOption<CallbackDataParams>;
+     lineStyle?: GraphEdgeLineStyleOption;
+     emphasis?: {
+-        focus?: Exclude<GraphNodeItemOption['emphasis'], undefined>['focus'];
++        focus?: NonNullable<Exclude<GraphNodeItemOption['emphasis'], undefined>['focus']>;
+         scale?: boolean | number;
+         label?: SeriesLabelOption;
+         edgeLabel?: SeriesLabelOption;
+@@ -11634,7 +11634,7 @@ interface ChordSeriesOption extends SeriesOption<ChordNodeStateOption<CallbackDa
+     itemStyle?: ChordItemStyleOption<CallbackDataParams>;
+     lineStyle?: ChordEdgeLineStyleOption;
+     emphasis?: {
+-        focus?: Exclude<ChordNodeItemOption['emphasis'], undefined>['focus'];
++        focus?: NonNullable<Exclude<ChordNodeItemOption['emphasis'], undefined>['focus']>;
+         scale?: boolean | number;
+         label?: SeriesLabelOption;
+         edgeLabel?: SeriesLabelOption;
+diff --git a/types/dist/shared.d.ts b/types/dist/shared.d.ts
+index 0c5a5cd1ff0717d544ace5b8eb773e244f428f2c..45359a148ee1ecc5c17cfd94bb58e08e5d7b0eaf 100644
+--- a/types/dist/shared.d.ts
++++ b/types/dist/shared.d.ts
+@@ -856,7 +856,7 @@ declare type PathKey = keyof PathProps;
+ declare type PathPropertyType = PropType<PathProps, PathKey>;
+ declare type PathStatePropNames = DisplayableStatePropNames | 'shape';
+ declare type PathState = Pick<PathProps, PathStatePropNames> & {
+-    hoverLayer?: ElementCommonState['hoverLayer'];
++    hoverLayer?: NonNullable<ElementCommonState['hoverLayer']>;
+ };
+ interface Path<Props extends PathProps = PathProps> {
+     animate(key?: '', loop?: boolean): Animator<this>;
+@@ -11535,7 +11535,7 @@ interface GraphSeriesOption extends SeriesOption<GraphNodeStateOption<CallbackDa
+     itemStyle?: ItemStyleOption<CallbackDataParams>;
+     lineStyle?: GraphEdgeLineStyleOption;
+     emphasis?: {
+-        focus?: Exclude<GraphNodeItemOption['emphasis'], undefined>['focus'];
++        focus?: NonNullable<Exclude<GraphNodeItemOption['emphasis'], undefined>['focus']>;
+         scale?: boolean | number;
+         label?: SeriesLabelOption;
+         edgeLabel?: SeriesLabelOption;
+@@ -11636,7 +11636,7 @@ interface ChordSeriesOption extends SeriesOption<ChordNodeStateOption<CallbackDa
+     itemStyle?: ChordItemStyleOption<CallbackDataParams>;
+     lineStyle?: ChordEdgeLineStyleOption;
+     emphasis?: {
+-        focus?: Exclude<ChordNodeItemOption['emphasis'], undefined>['focus'];
++        focus?: NonNullable<Exclude<ChordNodeItemOption['emphasis'], undefined>['focus']>;
+         scale?: boolean | number;
+         label?: SeriesLabelOption;
+         edgeLabel?: SeriesLabelOption;
+diff --git a/types/src/chart/chord/ChordSeries.d.ts b/types/src/chart/chord/ChordSeries.d.ts
+index 677bcdbd727e4a30cca27518f1e731cc1fc18e27..78ab1276db22d03f0865bfac5aa36508cf9d404a 100644
+--- a/types/src/chart/chord/ChordSeries.d.ts
++++ b/types/src/chart/chord/ChordSeries.d.ts
+@@ -69,7 +69,7 @@ export interface ChordSeriesOption extends SeriesOption<ChordNodeStateOption<Cal
+     itemStyle?: ChordItemStyleOption<CallbackDataParams>;
+     lineStyle?: ChordEdgeLineStyleOption;
+     emphasis?: {
+-        focus?: Exclude<ChordNodeItemOption['emphasis'], undefined>['focus'];
++        focus?: NonNullable<Exclude<ChordNodeItemOption['emphasis'], undefined>['focus']>;
+         scale?: boolean | number;
+         label?: SeriesLabelOption;
+         edgeLabel?: SeriesLabelOption;
+diff --git a/types/src/chart/graph/GraphSeries.d.ts b/types/src/chart/graph/GraphSeries.d.ts
+index 30cc87c427fc4797cd09e5cbba990413c9827715..95b2f92c5de2dce4ea1d5704c5905d7668d8f1f0 100644
+--- a/types/src/chart/graph/GraphSeries.d.ts
++++ b/types/src/chart/graph/GraphSeries.d.ts
+@@ -85,7 +85,7 @@ export interface GraphSeriesOption extends SeriesOption<GraphNodeStateOption<Cal
+     itemStyle?: ItemStyleOption<CallbackDataParams>;
+     lineStyle?: GraphEdgeLineStyleOption;
+     emphasis?: {
+-        focus?: Exclude<GraphNodeItemOption['emphasis'], undefined>['focus'];
++        focus?: NonNullable<Exclude<GraphNodeItemOption['emphasis'], undefined>['focus']>;
+         scale?: boolean | number;
+         label?: SeriesLabelOption;
+         edgeLabel?: SeriesLabelOption;

@@ -203,3 +203,14 @@ test('financial ledger: exact scenarios, rollback, audit, idempotency, concurren
  const row=await db.ledgerRevision.findFirst({where:{portfolioId:p}});await assert.rejects(()=>db.ledgerRevision.delete({where:{id:row.id}}));
  await assert.rejects(()=>db.ledgerEvent.create({data:{portfolioId:p,assetId:randomUUID(),kind:'BUY',date:new Date('2026-01-01'),quantity:'1',unitPrice:'1',fees:'0',gross:'0',withholding:'0',requestKey:randomUUID(),fingerprint:'synthetic'}}));
 });
+test('dashboard reads only owned histories in a consistent snapshot, filters and incomplete states',async()=>{
+ assert.equal((await client().request('dashboard')).status,401);
+ const own=(await a.request('portfolios')).body.data;const target=own.find(p=>p.name==='Financial synthetic');
+ const scoped=await a.request('dashboard?portfolioId='+target.id+'&from=2026-01-01&to=2026-01-04');assert.equal(scoped.status,200);assert.equal(scoped.body.data.groups[0].cost,'164.000000000000');assert.equal(scoped.body.data.groups[0].realized,'19.000000000000');assert.equal(scoped.body.data.groups[0].income,'253.000000000000'); // corrected receipt 19 + 26 receipts of 9
+ assert.equal((await b.request('dashboard?portfolioId='+target.id)).status,404);
+ const theirs=(await b.request('dashboard')).body.data;assert.ok(!theirs.portfolios.some(p=>p.id===target.id));assert.ok(!JSON.stringify(theirs).includes('Financial synthetic'));
+ assert.equal((await a.request('dashboard?from=2026-02-30')).status,400);
+ await a.request('portfolios/'+target.id+'/positions/limitation','POST',{incomplete:true,reason:'Test incomplete dashboard'});
+ const incomplete=(await a.request('dashboard')).body.data;assert.equal(incomplete.status,'INCOMPLETE_HISTORY');assert.equal(incomplete.groups[0].cost,null);assert.deepEqual(incomplete.groups[0].positions,[]);
+ await a.request('portfolios/'+target.id+'/positions/limitation','POST',{incomplete:false,reason:'Test reconciliation'});
+});

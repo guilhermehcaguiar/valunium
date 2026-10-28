@@ -43,7 +43,8 @@ export function eventValues(e: Pick<FinancialEvent, 'kind' | 'quantity' | 'unitP
   if (!trade && withholding.gt(gross)) throw new Error('WITHHOLDING_EXCEEDS_GROSS');
   return { gross: output(gross), total: output(e.kind === 'BUY' ? gross.add(fees) : trade ? gross.sub(fees) : gross.sub(withholding)) };
 }
-export function replay(events: readonly FinancialEvent[]) {
+export interface ReplayPosition { quantity: Decimal; cost: Decimal; realized: Decimal; income: Decimal }
+export function replay(events: readonly FinancialEvent[], observe?: (event: FinancialEvent, positions: ReadonlyMap<string, Readonly<ReplayPosition>>) => void) {
   if (events.length > 10000) throw new Error('HISTORY_LIMIT');
   const sorted = [...events].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : BigInt(a.sequence) < BigInt(b.sequence) ? -1 : BigInt(a.sequence) > BigInt(b.sequence) ? 1 : a.id.localeCompare(b.id));
   const positions = new Map<string, { quantity: Decimal; cost: Decimal; realized: Decimal; income: Decimal }>();
@@ -59,9 +60,12 @@ export function replay(events: readonly FinancialEvent[]) {
       s.realized = s.realized.add(gross.sub(fees).sub(removed));
     } else s.income = s.income.add(amount(e.gross).sub(amount(e.withholding)));
     positions.set(e.assetId, s);
+    observe?.(e, positions);
   }
   return [...positions].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([assetId, s]) => ({ assetId, quantity: output(s.quantity), cost: output(s.cost),
     averagePrice: output(s.quantity.isZero() ? new D('0') : s.cost.div(s.quantity)), realized: output(s.realized), income: output(s.income),
     marketValue: null, unrealized: null, quoteStatus: 'UNAVAILABLE' as const }));
 }
 export interface ReferencePrice { price: string; asOf: string; source: string; currency: 'BRL' }
+
+export { summarizeDashboard } from './dashboard';

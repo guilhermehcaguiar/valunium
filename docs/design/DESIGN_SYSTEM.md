@@ -7,8 +7,8 @@
 | `bg.base` | `#0A0A0B` | fundo |
 | `bg.surface` | `#121315` | container |
 | `bg.card` | `#1A1C1F` | cards |
-| `bg.elevated` | `#22252A` | menu/popover |
-| `border.default` | `#2E3238` | divisórias |
+| `bg.elevated` | `#25272B` | menu/popover |
+| `border.default` | `#303136` | divisórias |
 | `text.primary` | `#F5F3EF` | texto |
 | `text.secondary` | `#C8C2B8` | apoio |
 | `text.muted` | `#8F877C` | terciário (validar contraste) |

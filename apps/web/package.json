@@ -11,17 +11,18 @@
     "test": "tsx --test test/*.test.tsx"
   },
   "dependencies": {
+    "@valunium/shared": "workspace:*",
+    "echarts": "6.1.0",
     "next": "16.4.3",
     "react": "19.3.1",
-    "react-dom": "19.3.1",
-    "@valunium/shared": "workspace:*"
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
-    "typescript": "6.0.3",
+    "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "4.3.3",
-    "@tailwindcss/postcss": "4.3.3"
+    "typescript": "6.0.3"
   }
 }

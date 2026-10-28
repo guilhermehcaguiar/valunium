@@ -15,3 +15,6 @@ Nenhuma etapa começa automaticamente. Execução financeira permanece absolutam
 ## Portões de liberação
 
 Conforme o escopo: verificações técnicas, precisão, isolamento, segurança, privacidade, licenças e termos. Autenticação e autorização por carteira são obrigatórias antes de expor dados privados. Beta externo depende de auditoria e testes sintéticos, não apenas de build aprovado.
+
+
+Etapa 04 implementa dashboards baseados exclusivamente nos registros: custo, realizado, proventos, distribuições e séries contábeis. Cotações, rentabilidade, previsões e benchmarks não fazem parte dela. Etapa 05 permanece sem autorização de execução. Ver docs/development/ETAPA_04_REPORT.md.
