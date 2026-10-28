@@ -69,3 +69,5 @@ export function replay(events: readonly FinancialEvent[], observe?: (event: Fina
 export interface ReferencePrice { price: string; asOf: string; source: string; currency: 'BRL' }
 
 export { summarizeDashboard } from './dashboard';
+export { valuePositions } from './valuation';
+export type { ValuationPosition, ValuationQuote } from './valuation';

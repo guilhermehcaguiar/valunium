@@ -62,3 +62,19 @@ a, button { transition: background-color 150ms ease; }
 .plot.empty-note { padding:28px; }
 .plot.empty-note h2 { font-size:20px; color:var(--color-foreground); }
 .plot.empty-note p { margin:12px 0; }
+
+.market-panel { padding: clamp(16px, 3vw, 28px); border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-surface); min-width: 0; }
+.market-panel h2 { font-size: 1.5rem; }
+.market-panel h3 { color: var(--color-champagne); font-size: 1.05rem; }
+.market-panel .metric-value { overflow-wrap: anywhere; font-size: clamp(1.3rem, 2vw, 1.5rem); }
+.manual-editor { padding: 20px; }
+.manual-editor > * + * { margin-top: 20px; }
+.manual-editor summary { color: var(--color-gold); min-height: 44px; cursor: pointer; }
+.confirmation { display: flex; align-items: flex-start; gap: 12px; line-height: 1.6; }
+.confirmation input { margin-top: 6px; min-width: 20px; min-height: 20px; accent-color: var(--color-gold); }
+.manual-history li { padding: 16px 0; border-top: 1px solid var(--color-line); overflow-wrap: anywhere; }
+
+.quote-status-list { display: grid; gap: 12px; font-size: .875rem; color: var(--color-foreground); overflow-wrap: anywhere; }
+.quote-status-list li { border-left: 2px solid var(--color-gold); padding: 6px 12px; }
+@media (min-width: 640px) { .market-panel .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .market-panel .metrics-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

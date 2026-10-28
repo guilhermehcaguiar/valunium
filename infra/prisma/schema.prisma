@@ -30,6 +30,7 @@ model User {
   portfolios      Portfolio[]
   catalogAssets   Asset[]
   passwordResets  PasswordReset[]
+  manualQuotes    ManualQuote[]
 }
 
 // Managed by express-session/connect-pg-simple. No raw recovery tokens are stored.
@@ -83,6 +84,8 @@ model Asset {
   aliases AssetAlias[]
   events LedgerEvent[]
   changes AssetChange[]
+  manualQuotes ManualQuote[]
+  marketQuotes MarketQuote[]
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 }
@@ -137,4 +140,55 @@ model LedgerRevision {
   after Json
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   @@index([portfolioId, resourceId, createdAt])
+}
+
+// Manual prices are private, append-only references. Invalidation preserves the original.
+model ManualQuote {
+  id String @id @default(uuid()) @db.Uuid
+  ownerId String @db.Uuid
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  assetId String @db.Uuid
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  price Decimal @db.Decimal(38,12)
+  currency String @db.Char(3)
+  effectiveAt DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  invalidatedAt DateTime? @db.Timestamptz(3)
+  reason String @db.VarChar(500)
+  invalidationReason String? @db.VarChar(500)
+  requestKey String @db.Uuid
+  @@unique([ownerId, requestKey])
+  @@index([ownerId, assetId, createdAt])
+}
+
+// Written only when separate provider authorization explicitly permits storage/display/sharing.
+model MarketQuote {
+  id String @id @default(uuid()) @db.Uuid
+  assetId String @db.Uuid
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Restrict)
+  ticker String @db.VarChar(20)
+  price Decimal @db.Decimal(38,12)
+  currency String @db.Char(3)
+  effectiveAt DateTime? @db.Timestamptz(3)
+  fetchedAt DateTime @default(now()) @db.Timestamptz(3)
+  provider String @default("BRAPI") @db.VarChar(16)
+  priceType String @default("DELAYED") @db.VarChar(16)
+  @@index([assetId, ticker, fetchedAt])
+}
+
+model MarketProviderState {
+  id String @id @db.VarChar(16)
+  leaseId String? @db.Uuid
+  leaseUntil DateTime? @db.Timestamptz(3)
+  blockedUntil DateTime? @db.Timestamptz(3)
+}
+
+// Counts attempted requests, including errors/crash reservations, over a rolling window.
+model MarketRequest {
+  id String @id @default(uuid()) @db.Uuid
+  ticker String @db.VarChar(20)
+  startedAt DateTime @default(now()) @db.Timestamptz(3)
+  status String @default("PENDING") @db.VarChar(32)
+  @@index([startedAt])
+  @@index([ticker, startedAt])
 }

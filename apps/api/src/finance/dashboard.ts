@@ -7,7 +7,7 @@ import { summarizeDashboard, calendar } from '@valunium/financial-core';
 import type { FinancialEvent } from '@valunium/financial-core';
 import { wire } from './finance.service';
 @Injectable()
-class DashboardService {
+export class DashboardService {
  constructor(private readonly db:Database){}
  async read(ownerId:string,query:Record<string,string>){
   if(Object.keys(query).some(k=>!['portfolioId','from','to'].includes(k)))throw new BadRequestException();
@@ -31,4 +31,4 @@ class DashboardController {
  constructor(private readonly dashboard:DashboardService){}
  @Get()async read(@Req()req:IdentityRequest,@Query()query:Record<string,string>){return {data:await this.dashboard.read(req.user.id,query)};}
 }
-@Module({imports:[AuthModule],controllers:[DashboardController],providers:[DashboardService]})export class DashboardModule{}
+@Module({imports:[AuthModule],controllers:[DashboardController],providers:[DashboardService],exports:[DashboardService]})export class DashboardModule{}

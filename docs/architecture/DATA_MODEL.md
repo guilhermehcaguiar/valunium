@@ -23,3 +23,5 @@
 
 
 Etapa 03: Asset/AssetAlias/AssetChange e LedgerEvent/LedgerRevision implementados em migration aditiva. Eventos BUY/SELL e proventos são separados nos módulos/contratos, compartilhando armazenamento e auditoria. Campos de entrada NUMERIC(38,12), cálculos derivados por replay, sem snapshots monetários arredondados. Ver STAGE_03_API.md e ../finance/CALCULATION_RULES.md.
+
+Etapa 05: ManualQuote (privada, imutável com invalidação), MarketQuote (externa, append-only e bloqueada sem autorização de dados), MarketProviderState (lease/cooldown) e MarketRequest (orçamento conservador de tentativas). Migration aditiva 20261028000500_market_references. Nenhuma cotação altera o ledger. Consulte STAGE_05_API.md.

@@ -11,6 +11,11 @@ export interface Environment {
   mailOutbox: string | undefined;
   smtpUrl: string | undefined;
   smtpFrom: string | undefined;
+  brapiToken: string | undefined;
+  brapiAuthorized: boolean;
+  brapiTermsReference: string | undefined;
+  quoteTtlMinutes: number;
+  brapiBudget: number;
 }
 
 export function readEnvironment(env: NodeJS.ProcessEnv = process.env): Environment {
@@ -32,11 +37,25 @@ export function readEnvironment(env: NodeJS.ProcessEnv = process.env): Environme
   }
   if (Boolean(databaseUrl) !== Boolean(sessionSecret)) throw new Error('Configure DATABASE_URL and SESSION_SECRET together');
   const webOrigin = parseHttpOrigin(env.WEB_ORIGIN ?? 'http://localhost:3000');
+  const integer = (key: string, fallback: string, min: number, max: number) => {
+    const raw = env[key] ?? fallback;
+    const n = Number(raw);
+    if (!/^\d+$/.test(raw) || !Number.isSafeInteger(n) || n < min || n > max) throw new Error('Invalid market data configuration');
+    return n;
+  };
+  if (env.BRAPI_DATA_USE_AUTHORIZED && !['true','false'].includes(env.BRAPI_DATA_USE_AUTHORIZED)) throw new Error('Invalid market authorization');
+  const brapiTermsReference = env.BRAPI_TERMS_REFERENCE?.trim() || undefined;
+  const brapiAuthorized = env.BRAPI_DATA_USE_AUTHORIZED === 'true';
+  if (brapiAuthorized && (!brapiTermsReference || brapiTermsReference.length > 300)) throw new Error('Document separate provider permission before enabling market data');
+  const brapiToken = env.BRAPI_API_TOKEN?.trim() || undefined;
+  if (brapiToken && (!/^[\x21-\x7e]+$/.test(brapiToken) || brapiToken.length > 1024)) throw new Error('Invalid provider credential');
   if (nodeEnv === 'production' && (!databaseUrl || !sessionSecret || !webOrigin.startsWith('https://') || !env.SMTP_URL || !env.SMTP_FROM)) {
     throw new Error('Production requires identity configuration, HTTPS origin and SMTP transport');
   }
   return { nodeEnv: nodeEnv as Environment['nodeEnv'], port, host, corsOrigins,
     databaseUrl, sessionSecret, webOrigin, mailOutbox: env.MAIL_OUTBOX_DIR || undefined,
-    smtpUrl: env.SMTP_URL || undefined, smtpFrom: env.SMTP_FROM || undefined };
+    smtpUrl: env.SMTP_URL || undefined, smtpFrom: env.SMTP_FROM || undefined,
+    brapiToken, brapiAuthorized, brapiTermsReference,
+    quoteTtlMinutes: integer('QUOTE_TTL_MINUTES','60',30,1440), brapiBudget: integer('BRAPI_REQUEST_BUDGET','10000',1,14000) };
 
 }

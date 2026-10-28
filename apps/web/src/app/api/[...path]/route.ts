@@ -3,7 +3,7 @@ import { internalApiOrigin } from '../../../lib/server-api';
 import { parseHttpOrigin } from '@valunium/shared';
 
 export const dynamic = 'force-dynamic';
-const allowed = /^(dashboard|auth\/(csrf|register|login|logout|me|change-password|forgot-password|reset-password)|assets(?:\/[0-9a-f-]{36})?|users\/me|portfolios(?:\/[0-9a-f-]{36}(?:\/(archive|restore|primary|positions(?:\/limitation)?|transactions(?:\/[0-9a-f-]{36}(?:\/(cancel|revisions))?)?|income(?:\/[0-9a-f-]{36}(?:\/(cancel|revisions))?)?))?)?)$/;
+const allowed = /^(market\/(valuation|refresh|manual(?:\/[0-9a-f-]{36}(?:\/invalidate)?)?)|dashboard|auth\/(csrf|register|login|logout|me|change-password|forgot-password|reset-password)|assets(?:\/[0-9a-f-]{36})?|users\/me|portfolios(?:\/[0-9a-f-]{36}(?:\/(archive|restore|primary|positions(?:\/limitation)?|transactions(?:\/[0-9a-f-]{36}(?:\/(cancel|revisions))?)?|income(?:\/[0-9a-f-]{36}(?:\/(cancel|revisions))?)?))?)?)$/;
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }): Promise<Response> {
   const { path } = await context.params;
   const endpoint = path.join('/');

@@ -17,4 +17,6 @@ Nenhuma etapa começa automaticamente. Execução financeira permanece absolutam
 Conforme o escopo: verificações técnicas, precisão, isolamento, segurança, privacidade, licenças e termos. Autenticação e autorização por carteira são obrigatórias antes de expor dados privados. Beta externo depende de auditoria e testes sintéticos, não apenas de build aprovado.
 
 
-Etapa 04 implementa dashboards baseados exclusivamente nos registros: custo, realizado, proventos, distribuições e séries contábeis. Cotações, rentabilidade, previsões e benchmarks não fazem parte dela. Etapa 05 permanece sem autorização de execução. Ver docs/development/ETAPA_04_REPORT.md.
+Etapa 04 implementa dashboards baseados exclusivamente nos registros: custo, realizado, proventos, distribuições e séries contábeis. Cotações, rentabilidade, previsões e benchmarks não fazem parte dela. Etapa 05 foi autorizada e implementada conforme relatório próprio, com integração externa condicionada a token/autorização de dados. Ver docs/development/ETAPA_04_REPORT.md.
+
+Etapa 05: referências manuais privadas e valorização pontual; brapi v2 com cache/orçamento/lease, desativada por padrão até autorização de uso dos dados. Etapa 06 não iniciada. Sem execução financeira ou serviços pagos.

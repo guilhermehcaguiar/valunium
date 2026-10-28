@@ -51,3 +51,24 @@ export interface DashboardData {
  from:string;to:string;quoteStatus:'UNAVAILABLE';
 }
 export interface DashboardRecent {id:string;portfolioId:string;portfolio:string;currency:string;ticker:string;date:string;kind:string;gross:string;total:string}
+
+export interface QuoteView {
+ assetId:string;price:string|null;currency:string;source:'MANUAL'|'BRAPI'|null;priceType:'MANUAL'|'DELAYED'|null;
+ effectiveAt:string|null;fetchedAt:string|null;status:'VALID'|'MANUAL'|'STALE'|'UNKNOWN_TIME'|'UNAVAILABLE';providerStatus:string;
+}
+export interface MarketPosition {
+ portfolioId:string;assetId:string;ticker:string;currency:string;quantity:string;cost:string;averagePrice:string;
+ quote:QuoteView|null;status:string;marketValue:string|null;unrealized:string|null;unrealizedPercent:string|null;
+}
+export interface MarketGroup {
+ currency:string;complete:boolean;totalPositions:number|null;coveredPositions:number|null;
+ marketValue:string|null;unrealized:string|null;unrealizedPercent:string|null;partialMarketValue:string|null;partialUnrealized:string|null;byAsset:DashboardRow[];rows:MarketPosition[];
+}
+export interface MarketData {
+ status:string;asOf:string;providerStatus:string;groups:MarketGroup[];
+ manualAssets:{id:string;ticker:string;currency:string}[];
+}
+export interface ManualReference {
+ id:string;assetId:string;price:string;currency:string;effectiveAt:string;createdAt:string;invalidatedAt:string|null;
+ reason:string;invalidationReason:string|null;
+}

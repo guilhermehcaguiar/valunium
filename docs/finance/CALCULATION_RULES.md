@@ -11,3 +11,8 @@ Catálogo global: usuário autenticado pode cadastrar identificação manual; so
 Mutações financeiras exigem requestKey UUID na criação (repetição idêntica retorna registro; payload diferente conflita), version na correção/cancelamento, reason obrigatório. Revisões append-only guardam estado anterior/posterior e ator. Registros cancelados permanecem consultáveis. Cada rota privada usa proprietário de sessão e retorna 404 para recurso de terceiro. Carteiras arquivadas são consultáveis, mas não recebem mutações financeiras.
 
 Sem preços: marketValue/unrealized=null e quoteStatus=UNAVAILABLE. Flag de histórico incompleto bloqueia resultados de posições; splits, grupamentos, bonificações e amortizações não são calculados. Não há rentabilidade, benchmarks, impostos automáticos, importação ou execução externa.
+
+
+## Valorização pontual — Etapa 05
+
+Função pura valuePositions, sem alterar replay: valor estimado = quantidade × referência válida; não realizado = estimado − custo remanescente; variação (%) = não realizado / custo × 100 para custo positivo, null quando custo zero. Realizado e proventos não entram nessa fórmula. Decimal 80/HALF_EVEN, serialização 12 casas, totais somados antes do arredondamento de saída. Moedas distintas nunca são convertidas ou consolidadas. Posição zero e custo zero têm valor zero sem precisar de cotação; histórico incompleto impede valorização. Cotação ausente/vencida/sem horário efetivo/conflito de moeda é excluída; total completo null, subtotal conhecido explícito. Datas históricas não recebem preços atuais. Veja MARKET_DATA_POLICY.md. Não há TWR, XIRR, retorno total ou execução financeira.

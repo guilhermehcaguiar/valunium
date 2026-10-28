@@ -46,7 +46,12 @@
         "MAIL_OUTBOX_DIR",
         "SMTP_URL",
         "SMTP_FROM",
-        "API_INTERNAL_URL"
+        "API_INTERNAL_URL",
+        "BRAPI_API_TOKEN",
+        "BRAPI_DATA_USE_AUTHORIZED",
+        "BRAPI_TERMS_REFERENCE",
+        "QUOTE_TTL_MINUTES",
+        "BRAPI_REQUEST_BUDGET"
       ]
     }
   },

@@ -23,9 +23,12 @@ try {
     MAIL_OUTBOX_DIR: join(directory, 'mail'), INTEGRATION_DATABASE_URL: url.toString() };
   // Unrelated SMTP configuration from the invoking shell must never receive synthetic test mail.
   delete env.SMTP_URL; delete env.SMTP_FROM;
+  // Tests never consume an operator's quote token or infer permission to redistribute real data.
+  delete env.BRAPI_API_TOKEN; delete env.BRAPI_TERMS_REFERENCE;
+  env.BRAPI_DATA_USE_AUTHORIZED='false';
   const migration = spawnSync('pnpm', ['db:migrate'], { env, stdio: 'inherit' });
   if (migration.status !== 0) throw new Error('Disposable migration failed');
-  const args = process.argv.includes('--browser') ? ['scripts/test-browser.mjs'] : ['--test', 'apps/api/test/integration/identity.cjs'];
+  const args = process.argv.includes('--browser') ? ['scripts/test-browser.mjs'] : ['--test', '--test-concurrency=1', 'apps/api/test/integration/identity.cjs', 'apps/api/test/integration/market.cjs'];
   const test = spawnSync(process.execPath, args, { env, stdio: 'inherit' });
   if (test.status !== 0) process.exitCode = 1;
 } catch {

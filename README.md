@@ -2,7 +2,7 @@
 
 Plataforma open source de acompanhamento e inteligência patrimonial. Gratuita nesta fase, desenvolvida para colaboração, uso independente e portfólio técnico.
 
-**Estado: Etapa 04 — dashboards de acompanhamento contábil.** Cadastro, login/logout, sessões persistentes, perfil, recuperação/alteração de senha e carteiras próprias implementados. O dashboard contém apenas navegação e contexto. Compras/vendas históricas, posições derivadas, custo médio, resultado realizado e proventos recebidos estão implementados. Não há serviço hospedado, saldos fictícios, cotações ou indicadores de mercado.
+**Estado: Etapa 05 — referências de preço e valorização estimada.** Autenticação, carteiras privadas, registros históricos auditáveis, posições, custo médio, realizado, proventos e dashboards contábeis estão implementados. Referências manuais privadas permitem valor estimado e resultado não realizado. Adaptador brapi v2 gratuito implementado, com controle de chamadas; consumo operacional externo desativado por padrão até token e autorização específica para armazenar/apresentar/compartilhar dados. Não há serviço hospedado ou execução financeira.
 
 ## Política financeira permanente
 
@@ -86,7 +86,7 @@ pnpm db:status
 pnpm db:check
 ```
 
-`db:migrate` aplica migrations versionadas ao destino indicado: confira a URL antes de executar. Não há reset automático, seed com dados reais ou criação automática de banco desconhecido. O schema ativo contém metadados, usuários, sessões, verificadores de recuperação e carteiras. O rascunho original com relacionamentos/índices e `Decimal(38,12)` foi preservado em [schema.conceptual.prisma](docs/architecture/schema.conceptual.prisma); não é migrado. O schema documental foi preservado; identidade/isolamento estão implementados, e ledger/cálculos permanecem para a Etapa 03.
+`db:migrate` aplica migrations versionadas ao destino indicado: confira a URL antes de executar. Não há reset automático, seed com dados reais ou criação automática de banco desconhecido. O schema ativo contém identidade/sessões/carteiras, catálogo, ledger auditável e referências de preços da Etapa 05. O rascunho original com relacionamentos/índices e `Decimal(38,12)` foi preservado em [schema.conceptual.prisma](docs/architecture/schema.conceptual.prisma); não é migrado. O schema documental foi preservado; o schema executável e migrations são a fonte do estado implementado.
 
 ## Comandos e qualidade
 
@@ -102,7 +102,7 @@ pnpm prisma:generate
 pnpm docs:check
 ```
 
-`build` compila todos os pacotes e apps; `test` prepara builds e executa testes reais da API por HTTP, validação de ambiente/CORS, renderização da web, contratos e limites decimais. `pnpm test` também cria um cluster PostgreSQL nativo descartável, aplica ambas as migrations e testa dois usuários reais. Exige `pg_config`, `initdb`, `pg_ctl` e usuário não root; não usa DATABASE_URL do ambiente para escolher o banco de teste. O cluster é sempre encerrado e os artefatos privados ficam em /tmp para inspeção. A CI instala PostgreSQL nativo e executa os mesmos gates, sem deploy, publicação ou banco de produção. Execute build e typecheck em sequência: ambos geram arquivos em `.next/types`. O build usa webpack explicitamente e não baixa fontes remotas. A fonte Inter é preferida quando instalada, com fallback do sistema.
+`build` compila todos os pacotes e apps; `test` prepara builds e executa testes reais da API por HTTP, validação de ambiente/CORS, renderização da web, contratos e limites decimais. `pnpm test` também cria um cluster PostgreSQL nativo descartável, aplica todas as migrations versionadas e testa dois usuários reais. Exige `pg_config`, `initdb`, `pg_ctl` e usuário não root; não usa DATABASE_URL do ambiente para escolher o banco de teste. O cluster é sempre encerrado e os artefatos privados ficam em /tmp para inspeção. A CI instala PostgreSQL nativo e executa os mesmos gates, sem deploy, publicação ou banco de produção. Execute build e typecheck em sequência: ambos geram arquivos em `.next/types`. O build usa webpack explicitamente e não baixa fontes remotas. A fonte Inter é preferida quando instalada, com fallback do sistema.
 
 Após build, em terminais separados:
 
@@ -118,9 +118,10 @@ curl --fail http://localhost:3000/
 Obsidian + Gold, com tokens centralizados em `apps/web/src/app/globals.css`. A marca textual é provisória. O conceito Aureus A1 Clássico está aprovado como direção; o vetor final segue pendente.
 
 1. Etapa 01: fundação técnica concluída.
-2. Etapa 02: autenticação, usuários e carteiras (esta entrega; sem publicação).
+2. Etapa 02: autenticação, usuários e carteiras concluídos; sem publicação.
 3. Etapa 03: registros históricos internos e cálculos determinísticos.
-4. Etapa 04: dashboard patrimonial.
+4. Etapa 04: dashboard contábil concluído.
+5. Etapa 05: referências de preço e valorização estimada; integração autenticada depende de token e autorização de dados.
 
 Etapas futuras exigem autorização própria. SaaS, billing, cloud e execução financeira não fazem parte desta entrega. Leia [o roadmap](docs/product/ROADMAP.md), [a arquitetura](docs/architecture/ARCHITECTURE.md) e [o relatório da Etapa 02](docs/development/ETAPA_02_REPORT.md).
 
@@ -163,13 +164,28 @@ Abra **Ativos** para cadastrar identificação manual B3/BRL. Em cada carteira, 
 
 Motor puro Decimal.js 10.6.0 com 80 algarismos internos; regras, taxas, ordenação, limites e arredondamento em [CALCULATION_RULES](docs/finance/CALCULATION_RULES.md). Contratos e integridade em [STAGE_03_API](docs/architecture/STAGE_03_API.md). Relatório em [ETAPA_03_REPORT](docs/development/ETAPA_03_REPORT.md). `pnpm test` inclui regressões das etapas anteriores e PostgreSQL real; `pnpm test:browser` inclui duas compras, venda parcial, posição e dividendo recebido. Migração aditiva, aplicada automaticamente apenas ao banco descartável dos testes. Para seu banco identificado: gere cliente e execute `pnpm db:migrate` antes do dev.
 
-Preço de mercado e resultado não realizado ficam indisponíveis. Histórico com evento societário não suportado deve ser sinalizado na interface: posições ficam bloqueadas até conciliação externa. Não há split/grupamento/bonificação/amortização, short, FX, impostos automáticos, importação, rentabilidade ou dashboard financeiro completo. Etapa 04 não iniciada.
+Na Etapa 03 isolada, preço de mercado e resultado não realizado permaneciam indisponíveis; consulte abaixo a ampliação da Etapa 05. Histórico com evento societário não suportado deve ser sinalizado na interface: posições ficam bloqueadas até conciliação externa. Não há split/grupamento/bonificação/amortização, short, FX, impostos automáticos, importação, rentabilidade ou dashboard financeiro completo. Dashboard contábil foi acrescentado na Etapa 04.
 
 
 ## Dashboards — Etapa 04
 
-`/dashboard` consolida somente suas carteiras, com seletor e período. `/portfolios/[id]` reúne visão contábil, posições, gráficos, histórico/proventos e as configurações existentes. Indicadores: custo das posições abertas, resultado realizado, proventos recebidos, ativos abertos, carteiras e registros. Cinco visualizações com ECharts 6.1.0/SVG sob demanda e alternativas tabulares exatas, estados vazios/incompletos e recuperação de falhas. Nenhum preço de mercado, rentabilidade, previsão de dividendo ou benchmark foi adicionado.
+`/dashboard` consolida somente suas carteiras, com seletor e período. `/portfolios/[id]` reúne visão contábil, posições, gráficos, histórico/proventos e as configurações existentes. Indicadores: custo das posições abertas, resultado realizado, proventos recebidos, ativos abertos, carteiras e registros. Cinco visualizações com ECharts 6.1.0/SVG sob demanda e alternativas tabulares exatas, estados vazios/incompletos e recuperação de falhas. Esses cinco gráficos continuam contábeis. Valorização pontual foi acrescentada separadamente na Etapa 05, sem previsões, benchmarks ou retorno histórico total.
 
-O backend reutiliza o replay da Etapa 03 e lê um snapshot consistente; não há migrations novas. Moedas são segmentadas, históricos incompletos tornam totais da moeda indisponíveis. Veja [definições dos indicadores](docs/finance/DASHBOARD_INDICATORS.md), [contrato de leitura](docs/architecture/STAGE_04_API.md) e [relatório verificável](docs/development/ETAPA_04_REPORT.md). `pnpm test` cobre indicadores e isolamento real em PostgreSQL; `pnpm test:browser` valida dashboards e captura screenshots privados em /tmp nas larguras 320/375/768/1024/1440, além das regressões 01–03.
+O backend reutiliza o replay da Etapa 03 e lê um snapshot consistente; não houve migrations na Etapa 04; referências da Etapa 05 têm migration aditiva própria. Moedas são segmentadas, históricos incompletos tornam totais da moeda indisponíveis. Veja [definições dos indicadores](docs/finance/DASHBOARD_INDICATORS.md), [contrato de leitura](docs/architecture/STAGE_04_API.md) e [relatório verificável](docs/development/ETAPA_04_REPORT.md). `pnpm test` cobre indicadores e isolamento real em PostgreSQL; `pnpm test:browser` valida dashboards e captura screenshots privados em /tmp nas larguras 320/375/768/1024/1440, além das regressões 01–03.
 
-O patch de tipos ECharts em patches/ é aplicado pelo pnpm e deve acompanhar o lockfile. Mantém as verificações strict/ESLint; não altera código executável da biblioteca. Não há serviço pago, provedor de cotações, integração financeira, deploy ou SaaS comercial. A Etapa 05 não foi iniciada.
+O patch de tipos ECharts em patches/ é aplicado pelo pnpm e deve acompanhar o lockfile. Mantém as verificações strict/ESLint; não altera código executável da biblioteca. Não há serviço pago, deploy ou SaaS comercial. A Etapa 05 adiciona o adaptador de leitura descrito abaixo; a Etapa 06 não foi iniciada.
+
+
+## Referências de preço — Etapa 05
+
+No dashboard e na visão da carteira, a seção **Valorização estimada** mostra cobertura, preço/fonte/horário, valor estimado, resultado e variação não realizados. Resultados realizados e proventos permanecem separados. Totais incompletos são null; subtotal conhecido e ativos excluídos são identificados. Preço vencido não vira zero nem preço de custo. Gráficos contábeis continuam por custo; um gráfico separado mostra a distribuição do valor estimado por ativo somente com cobertura completa, com tabela exata. Não há câmbio, TWR/XIRR, benchmarks, previsões de dividendos ou eventos societários automáticos.
+
+Abra **Gerenciar referências de preço**, escolha um ativo com posição própria, informe preço positivo e data/hora local da referência, fonte/motivo e confirme os dados. Referência manual é privada e não é cotação oficial; novas referências e invalidações preservam o histórico. TTL padrão 60 minutos também se aplica à validade manual. Para voltar à referência externa, invalide a manual ativa.
+
+brapi plano gratuito: 15.000 requisições por ciclo, 1 ticker/chamada, 1 chamada simultânea, atualização a cada 30 minutos; não pressupomos cobertura de FIIs/ETFs/BDRs. Usa somente `/api/v2/stocks/quote` com Bearer no backend. Configure `BRAPI_API_TOKEN` somente no `.env` raiz; nunca `NEXT_PUBLIC_*`. Não crie assinatura paga. Sem token o sistema continua contábil e manual. A consulta pública de sandbox confirma contrato; não valida token/cobertura da conta.
+
+**Bloqueio de uso de dados:** os termos proíbem redistribuição e não concedem expressamente o cache persistente multiusuário planejado. Mesmo com token, não habilite consumo antes de obter autorização escrita específica do fornecedor para persistência, apresentação e compartilhamento. Só então configure `BRAPI_DATA_USE_AUTHORIZED=true` e `BRAPI_TERMS_REFERENCE` com identificação da autorização (não o token). A configuração não concede direitos. AGPL licencia código, não dados. Veja [política e limites](docs/finance/MARKET_DATA_POLICY.md), [contrato da API](docs/architecture/STAGE_05_API.md) e [relatório](docs/development/ETAPA_05_REPORT.md).
+
+`QUOTE_TTL_MINUTES=60`, `BRAPI_REQUEST_BUDGET=10000` (tentativas nos últimos 35 dias, sem reset mensal automático). GET/renderização não chama brapi. Botão explícito consulta um ticker, reutiliza cache válido e coordena processos no PostgreSQL. Timeout/cota/erros preservam contabilidade e preços antigos com recência explícita. O painel da brapi continua fonte da cota real.
+
+Migration aditiva deve ser aplicada somente ao banco local **identificado e autorizado**, após conferir `DATABASE_URL`: `pnpm prisma:generate` e `pnpm db:migrate`. Os testes usam clusters descartáveis; a migration aditiva também foi aplicada ao valunium_dev local identificado, preservando os registros existentes. Nenhum reset ou dado financeiro de exemplo foi inserido nele. `pnpm dev` inicia os serviços; `pnpm test` inclui regressões e PostgreSQL real; `pnpm test:browser` usa fixtures sintéticas isoladas de fornecedor, sem consumir token pessoal.
