@@ -1,9 +1,10 @@
-// Stage 01: technical metadata only. Domain draft: docs/architecture/schema.conceptual.prisma.
+// Stage 02: local identity, opaque sessions and owner-scoped portfolios.
+// Domain reference remains preserved in docs/architecture/schema.conceptual.prisma.
 // Financial fields in future stages must use Decimal @db.Decimal(38, 12).
 generator client {
   provider = "prisma-client"
-  output = "./generated/client"
-  moduleFormat = "esm"
+  output = "../../apps/api/src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -13,4 +14,53 @@ datasource db {
 model FoundationMetadata {
   id        String   @id
   createdAt DateTime @default(now()) @db.Timestamptz(3)
+}
+
+
+model User {
+  id              String          @id @default(uuid()) @db.Uuid
+  email           String          @unique @db.VarChar(254)
+  name            String          @db.VarChar(100)
+  passwordHash    String
+  authVersion     Int             @default(0)
+  locale          String          @default("pt-BR") @db.VarChar(10)
+  timeZone        String          @default("America/Sao_Paulo") @db.VarChar(64)
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
+  portfolios      Portfolio[]
+  passwordResets  PasswordReset[]
+}
+
+// Managed by express-session/connect-pg-simple. No raw recovery tokens are stored.
+model Session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamptz(6)
+  @@index([expire])
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique @db.Char(64)
+  expiresAt DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Portfolio {
+  id           String    @id @default(uuid()) @db.Uuid
+  ownerId      String    @db.Uuid
+  owner        User      @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  name         String    @db.VarChar(100)
+  description  String    @default("") @db.VarChar(1000)
+  baseCurrency String    @default("BRL") @db.Char(3)
+  isPrimary    Boolean   @default(false)
+  archivedAt   DateTime? @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  @@index([ownerId, archivedAt, createdAt])
+  // Partial primary uniqueness, BRL and lifecycle constraints live in the SQL migration.
 }

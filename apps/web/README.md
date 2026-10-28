@@ -1,5 +1,5 @@
 # @valunium/web
 
-Next.js App Router com página provisória Obsidian + Gold, marca textual, estados básicos e componentes reutilizáveis. Sem dashboard ou dados financeiros.
+Next.js App Router, Obsidian + Gold, marca textual provisória, acesso/perfil/carteiras e BFF na mesma origem. Rotas privadas consultam a sessão no backend. Sem gráficos, saldos fictícios ou eventos financeiros.
 
-Consulte o [README da raiz](../../README.md) para ambiente e comandos.
+Consulte o [README da raiz](../../README.md).

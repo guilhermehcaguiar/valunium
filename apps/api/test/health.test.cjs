@@ -37,14 +37,15 @@ test('CORS grants only the explicitly configured origin', async () => {
   for (const [origin, expected] of [['http://localhost:3000', 'http://localhost:3000'], ['https://untrusted.example', null]]) {
     const response = await fetch(`${base}/api/v1/health`, { headers: { Origin: origin } });
     assert.equal(response.headers.get('access-control-allow-origin'), expected);
-    assert.equal(response.headers.get('access-control-allow-credentials'), null);
+    assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
   }
 });
 test('environment fails closed on invalid configuration', () => {
   for (const env of [{PORT:'0'}, {PORT:'1e3'}, {NODE_ENV:'invalid'}, {CORS_ORIGINS:'*'}, {CORS_ORIGINS:'https://user:secret@example.org'}]) {
     assert.throws(() => readEnvironment(env));
   }
-  assert.deepEqual(readEnvironment({NODE_ENV:'production'}).corsOrigins, []);
+  assert.throws(() => readEnvironment({NODE_ENV:'production'}));
+  assert.deepEqual(readEnvironment({NODE_ENV:'test'}).corsOrigins, []);
 });
 test('unexpected errors redact exception messages from responses and logs', () => {
   const { HttpExceptionFilter } = require('../dist/common/http-exception.filter');

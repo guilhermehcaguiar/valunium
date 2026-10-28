@@ -18,6 +18,8 @@ jobs:
         with:
           node-version: '24'
           cache: pnpm
+      - name: Native PostgreSQL for disposable integration tests
+        run: sudo apt-get update && sudo apt-get install --yes postgresql
       - run: pnpm install --frozen-lockfile
       - run: pnpm prisma:validate
       - run: pnpm prisma:generate

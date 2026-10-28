@@ -19,11 +19,28 @@
     "rxjs": "^7.8.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "@nestjs/passport": "11.0.5",
+    "passport": "0.7.0",
+    "passport-local": "1.0.0",
+    "express-session": "1.19.0",
+    "connect-pg-simple": "10.0.0",
+    "pg": "8.23.1",
+    "argon2": "0.45.1",
+    "@nestjs/throttler": "6.7.1",
+    "nodemailer": "10.2.1",
+    "@prisma/client": "7.10.1",
+    "@prisma/adapter-pg": "7.10.1"
   },
   "devDependencies": {
     "typescript": "6.0.3",
     "@types/node": "^24.0.0",
-    "@types/express": "^5.0.0"
+    "@types/express": "^5.0.0",
+    "@types/express-session": "1.19.0",
+    "@types/connect-pg-simple": "7.0.3",
+    "@types/passport": "1.0.17",
+    "@types/passport-local": "1.0.38",
+    "@types/pg": "8.23.1",
+    "@types/nodemailer": "8.0.2"
   }
 }

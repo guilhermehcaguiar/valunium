@@ -19,4 +19,4 @@
 - Linhas de eventos não são sobrescritas silenciosamente: anulação/correção com trilha de auditoria (detalhar no sprint).
 
 ## Status
-`docs/architecture/schema.conceptual.prisma` preserva o rascunho original e não é migrado. `infra/prisma/schema.prisma` contém somente metadados técnicos da Etapa 01. Revisar identidade/isolamento na Etapa 02 e integridade/eventos na Etapa 03 antes das migrations de domínio.
+`docs/architecture/schema.conceptual.prisma` preserva o rascunho original e não é migrado. `infra/prisma/schema.prisma` contém metadados da fundação e identidade/sessões/carteiras da Etapa 02. A migration aditiva inclui unicidade de e-mail normalizado, índice parcial de carteira principal e constraints de lifecycle/moeda. A integridade de ledger/eventos financeiros permanece para a Etapa 03.

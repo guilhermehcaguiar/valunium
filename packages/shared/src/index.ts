@@ -16,3 +16,21 @@ export function parseHttpOrigin(value: string): string {
   }
   return url.origin;
 }
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  locale: string;
+  timeZone: string;
+}
+export interface PortfolioSummary {
+  id: string;
+  name: string;
+  description: string;
+  baseCurrency: 'BRL';
+  isPrimary: boolean;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

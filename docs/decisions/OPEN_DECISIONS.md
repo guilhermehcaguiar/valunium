@@ -1,5 +1,5 @@
 # Decisões abertas (não inferir como aprovadas)
-1. Provedor e versão da autenticação; MFA e recuperação de acesso.
+1. MFA e verificação de posse de e-mail. Estratégia local/sessões/recuperação resolvida na Etapa 02: `ADR-0006-LOCAL-IDENTITY.md`.
 2. Política de eventos corporativos antes de importar históricos completos.
 3. Fontes/licenças/custos de cotações comerciais.
 4. Variação patrimonial vs TWR vs XIRR e convenções de fluxo de caixa.

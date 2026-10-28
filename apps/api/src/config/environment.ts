@@ -5,6 +5,12 @@ export interface Environment {
   port: number;
   host: string;
   corsOrigins: string[];
+  databaseUrl: string | undefined;
+  sessionSecret: string | undefined;
+  webOrigin: string;
+  mailOutbox: string | undefined;
+  smtpUrl: string | undefined;
+  smtpFrom: string | undefined;
 }
 
 export function readEnvironment(env: NodeJS.ProcessEnv = process.env): Environment {
@@ -19,5 +25,18 @@ export function readEnvironment(env: NodeJS.ProcessEnv = process.env): Environme
   if (!host || /\s/.test(host)) throw new Error('Invalid HOST');
   const origins = env.CORS_ORIGINS ?? (nodeEnv === 'development' ? 'http://localhost:3000' : '');
   const corsOrigins = origins ? origins.split(',').map((origin) => parseHttpOrigin(origin.trim())) : [];
-  return { nodeEnv: nodeEnv as Environment['nodeEnv'], port, host, corsOrigins };
+  const databaseUrl = env.DATABASE_URL || undefined;
+  const sessionSecret = env.SESSION_SECRET || undefined;
+  if (sessionSecret && (Buffer.byteLength(sessionSecret) < 32 || sessionSecret.includes('CHANGE_ME'))) {
+    throw new Error('SESSION_SECRET must contain at least 32 random bytes');
+  }
+  if (Boolean(databaseUrl) !== Boolean(sessionSecret)) throw new Error('Configure DATABASE_URL and SESSION_SECRET together');
+  const webOrigin = parseHttpOrigin(env.WEB_ORIGIN ?? 'http://localhost:3000');
+  if (nodeEnv === 'production' && (!databaseUrl || !sessionSecret || !webOrigin.startsWith('https://') || !env.SMTP_URL || !env.SMTP_FROM)) {
+    throw new Error('Production requires identity configuration, HTTPS origin and SMTP transport');
+  }
+  return { nodeEnv: nodeEnv as Environment['nodeEnv'], port, host, corsOrigins,
+    databaseUrl, sessionSecret, webOrigin, mailOutbox: env.MAIL_OUTBOX_DIR || undefined,
+    smtpUrl: env.SMTP_URL || undefined, smtpFrom: env.SMTP_FROM || undefined };
+
 }

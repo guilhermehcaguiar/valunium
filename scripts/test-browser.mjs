@@ -1,0 +1,133 @@
+import { createRequire } from 'node:module';
+import { spawn } from 'node:child_process';
+import { openSync, closeSync } from 'node:fs';
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import assert from 'node:assert/strict';
+import { chromium } from 'playwright';
+
+const require = createRequire(import.meta.url);
+const { createApplication } = require('../apps/api/dist/application');
+const { readEnvironment } = require('../apps/api/dist/config/environment');
+const { MailDelivery } = require('../apps/api/dist/core/mail');
+assert.match(process.env.INTEGRATION_DATABASE_URL ?? '', /valunium_stage02_disposable/);
+assert.equal(process.env.DATABASE_URL, process.env.INTEGRATION_DATABASE_URL);
+const origin = 'http://localhost:43102';
+const environment = readEnvironment({ ...process.env, NODE_ENV: 'test', WEB_ORIGIN: origin, CORS_ORIGINS: origin });
+const app = await createApplication(environment, false);
+let web, browser;
+const log = openSync(join(process.env.MAIL_OUTBOX_DIR, '..', 'web.log'), 'w', 0o600);
+try {
+  await app.listen(43103, '127.0.0.1');
+  const next = require.resolve('next/dist/bin/next', { paths: [join(process.cwd(), 'apps/web')] });
+  web = spawn(process.execPath, [next, 'start', '--hostname', '127.0.0.1', '--port', '43102'], {
+    cwd: join(process.cwd(), 'apps/web'), stdio: ['ignore', log, log],
+    env: { ...process.env, NODE_ENV: 'production', API_INTERNAL_URL: 'http://127.0.0.1:43103', WEB_ORIGIN: origin },
+  });
+  let ready = false;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    if (web.exitCode !== null) throw new Error('Next runtime exited');
+    try { const response = await fetch(origin); if (response.ok) { ready = true; break; } } catch { /* starting */ }
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  assert.ok(ready);
+  browser = await chromium.launch({ headless: true });
+  const errors = [];
+  const a = await browser.newContext(); const b = await browser.newContext();
+  const pageA = await a.newPage(); const pageB = await b.newPage();
+  for (const page of [pageA, pageB]) page.on('pageerror', failure => errors.push(failure.message));
+  const password = 'Browser synthetic password 02!';
+  async function register(page, name, email) {
+    await page.goto(origin + '/register');
+    await page.getByLabel('Nome', { exact: true }).fill(name);
+    await page.getByLabel('E-mail', { exact: true }).fill(email);
+    await page.getByLabel('Senha (12 a 128 caracteres)', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Criar conta', exact: true }).click();
+    await page.getByRole('status').filter({ hasText: 'Se o cadastro pôde' }).waitFor();
+  }
+  async function login(page, email, pass = password) {
+    await page.goto(origin + '/login');
+    await page.getByLabel('E-mail', { exact: true }).fill(email);
+    await page.getByLabel('Senha (12 a 128 caracteres)', { exact: true }).fill(pass);
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+    await page.waitForURL('**/dashboard');
+    await page.getByRole('heading', { name: 'Visão geral', exact: true }).waitFor();
+  }
+  async function portfolio(page, name) {
+    await page.goto(origin + '/portfolios/new');
+    await page.getByLabel('Nome da carteira').fill(name);
+    await page.getByLabel('Descrição (opcional)').fill('Dados sintéticos de teste');
+    await page.getByRole('button', { name: 'Criar carteira', exact: true }).click();
+    await page.waitForURL(/\/portfolios\/[0-9a-f-]{36}$/);
+    await page.getByRole('button', { name: 'Salvar alterações' }).waitFor();
+    return page.url().split('/').at(-1);
+  }
+  await pageA.goto(origin + '/dashboard'); await pageA.waitForURL('**/login');
+  await register(pageA, 'Browser A', 'browser.a@example.test'); await login(pageA, 'browser.a@example.test');
+  await pageA.getByText('Browser A', { exact: true }).waitFor();
+  const idA = await portfolio(pageA, 'Carteira sintética A');
+  await register(pageB, 'Browser B', 'browser.b@example.test'); await login(pageB, 'browser.b@example.test');
+  await pageB.getByText('Browser B', { exact: true }).waitFor();
+  await portfolio(pageB, 'Carteira sintética B');
+  await pageA.goto(origin + '/portfolios');
+  await pageA.getByRole('link', { name: 'Carteira sintética A', exact: true }).waitFor();
+  assert.equal(await pageA.getByRole('link', { name: 'Carteira sintética B', exact: true }).count(), 0);
+  await pageB.goto(origin + '/portfolios/' + idA);
+  await pageB.getByRole('alert').filter({ hasText: 'Carteira não encontrada' }).waitFor();
+  const csrfResponse = await b.request.get(origin + '/api/auth/csrf');
+  const csrf = (await csrfResponse.json()).data.csrfToken;
+  for (const action of ['archive', 'restore', 'primary']) {
+    const response = await b.request.post(`${origin}/api/portfolios/${idA}/${action}`, { headers: { Origin: origin, 'X-CSRF-Token': csrf } });
+    assert.equal(response.status(), 404);
+  }
+  const deniedCsrf = await b.request.post(origin + '/api/portfolios', { headers: { Origin: origin }, data: { name: 'CSRF denied' } });
+  assert.equal(deniedCsrf.status(), 403);
+  const newPage = await a.newPage(); await newPage.goto(origin + '/dashboard');
+  await newPage.getByRole('heading', { name: 'Visão geral', exact: true }).waitFor(); await newPage.close();
+  assert.ok((await a.cookies()).some(cookie => cookie.name === 'valunium.sid' && cookie.httpOnly && cookie.sameSite === 'Lax'));
+  assert.equal(await pageA.evaluate(() => localStorage.length), 0);
+  assert.equal((await pageA.goto(origin + '/settings/profile')).status(), 200);
+  await pageA.getByLabel('Nome', { exact: true }).fill('Browser A atualizado');
+  await pageA.getByRole('button', { name: 'Salvar perfil' }).click();
+  await pageA.getByRole('status').filter({ hasText: 'Perfil atualizado' }).waitFor();
+  await pageA.setViewportSize({ width: 390, height: 844 });
+  await pageA.goto(origin + '/portfolios');
+  await pageA.getByRole('link', { name: 'Carteira sintética A', exact: true }).waitFor();
+  assert.ok(await pageA.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  await pageA.keyboard.press('Tab');
+  assert.match(await pageA.evaluate(() => document.activeElement?.textContent), /Ir para o conteúdo/);
+  await pageA.screenshot({ path: join(process.env.MAIL_OUTBOX_DIR, '..', 'mobile.png'), fullPage: true });
+  await pageA.setViewportSize({ width: 1366, height: 900 });
+  await pageA.screenshot({ path: join(process.env.MAIL_OUTBOX_DIR, '..', 'desktop.png'), fullPage: true });
+  await pageA.getByRole('button', { name: 'Encerrar sessão', exact: true }).click();
+  await pageA.waitForURL('**/login');
+  await pageA.goto(origin + '/portfolios/' + idA); await pageA.waitForURL('**/login');
+  await pageB.goto(origin + '/forgot-password');
+  await pageB.getByLabel('E-mail').fill('browser.b@example.test');
+  await pageB.getByRole('button', { name: 'Enviar instruções' }).click();
+  await pageB.getByRole('status').filter({ hasText: 'Se o e-mail estiver cadastrado' }).waitFor();
+  await app.get(MailDelivery).drain();
+  const names = await readdir(process.env.MAIL_OUTBOX_DIR);
+  const messages = await Promise.all(names.map(async name => JSON.parse(await readFile(join(process.env.MAIL_OUTBOX_DIR, name), 'utf8'))));
+  const resetUrl = messages.find(message => message.to === 'browser.b@example.test').resetUrl;
+  await pageB.goto(resetUrl);
+  await pageB.getByLabel('Nova senha (12 a 128 caracteres)', { exact: true }).fill('Browser reset password 03!');
+  await pageB.getByRole('button', { name: 'Redefinir senha' }).click();
+  await pageB.getByRole('status').filter({ hasText: 'Senha redefinida' }).waitFor();
+  assert.equal(new URL(pageB.url()).hash, '');
+  await login(pageB, 'browser.b@example.test', 'Browser reset password 03!');
+  assert.deepEqual(errors, []);
+  console.log('PASS: Chromium; two isolated browser contexts; registration/login/portfolios/profile/logout/recovery; CSRF/IDOR; persistent HttpOnly session; mobile width and keyboard; no page errors.');
+} catch (failure) {
+  if (browser) {
+    let index = 0;
+    for (const context of browser.contexts()) for (const page of context.pages()) {
+      await page.screenshot({ path: join(process.env.MAIL_OUTBOX_DIR, '..', `failure-${index++}.png`), fullPage: true }).catch(() => {});
+    }
+  }
+  throw failure;
+} finally {
+  await browser?.close();
+  if (web) { web.kill('SIGTERM'); await new Promise(resolve => web.once('exit', resolve)); }
+  await app.close(); closeSync(log);
+}

@@ -21,3 +21,4 @@ coverage/
 *.backup
 
 infra/prisma/generated/
+apps/api/src/generated/

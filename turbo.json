@@ -25,7 +25,8 @@
       "dependsOn": [
         "build"
       ],
-      "outputs": []
+      "outputs": [],
+      "cache": false
     },
     "dev": {
       "dependsOn": [
@@ -38,11 +39,19 @@
         "PORT",
         "HOST",
         "CORS_ORIGINS",
-        "NEXT_PUBLIC_API_URL"
+        "NEXT_PUBLIC_API_URL",
+        "DATABASE_URL",
+        "SESSION_SECRET",
+        "WEB_ORIGIN",
+        "MAIL_OUTBOX_DIR",
+        "SMTP_URL",
+        "SMTP_FROM",
+        "API_INTERNAL_URL"
       ]
     }
   },
   "globalDependencies": [
-    "tsconfig.base.json"
+    "tsconfig.base.json",
+    "infra/prisma/schema.prisma"
   ]
 }

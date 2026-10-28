@@ -9,7 +9,7 @@ test('home explains the provisional scope and read-only policy', () => {
   const html = renderToStaticMarkup(<AppShell><Home /></AppShell>);
   assert.match(html, /Valunium/);
   assert.match(html, /nunca envia ordens/);
-  assert.match(html, /ainda não estão disponíveis/);
+  assert.match(html, /já estão disponíveis/);
   assert.match(html, /href="#conteudo"/);
   assert.match(html, /id="conteudo"/);
 });
